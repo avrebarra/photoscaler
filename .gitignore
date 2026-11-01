@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# [epiq]: local hydrated state is never committed
+.epiq/events/
+.epiq/log/
