@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  font-family:
+    ui-sans-system,
+    system-ui,
+    -apple-system,
+    sans-serif;
+}

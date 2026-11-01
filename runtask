@@ -1,0 +1,85 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# ─── commands (self-documenting) ─────────────────────────────────────────────
+
+def c(desc, &block)
+  [desc, block]
+end
+
+GROUPS = {
+  "" => "General",
+}.freeze
+
+COMMANDS = {
+  %w[dev]     => c("Start Vite dev server (HMR)") { run "npm run dev" },
+  %w[build]   => c("Typecheck + build to dist/") { run "npm run build" },
+  %w[preview] => c("Preview production build")    { run "npm run preview" },
+  %w[lint]    => c("Lint (oxlint + prettier check)") { run "npm run lint" },
+  %w[format]  => c("Format with prettier")           { run "npm run format" },
+  %w[install] => c("Install deps")                { run "npm install --cache /tmp/npm-cache2" },
+}.freeze
+
+# ─── config & helpers ────────────────────────────────────────────────────────
+
+SCRIPT_DIR = File.dirname(File.expand_path(__FILE__))
+
+def load_env(path)
+  return unless File.exist?(path)
+  File.readlines(path).each do |line|
+    line = line.strip
+    next if line.empty? || line.start_with?("#")
+    key, value = line.split("=", 2)
+    ENV[key.strip] = value.strip.delete(%q('"))
+  end
+end
+
+def bail(msg)
+  warn "❌ #{msg}"
+  exit 1
+end
+
+def run(cmd)
+  puts "  $ #{cmd}"
+  bail("#{cmd.split.first} failed") unless system(cmd)
+  true
+end
+
+load_env("#{SCRIPT_DIR}/.env")
+
+# ─── usage (auto-generated) ──────────────────────────────────────────────────
+
+def usage(group = nil)
+  lines = ["Usage: ./runtask <command>", ""]
+  groups = group ? { group => GROUPS[group] } : GROUPS
+  groups.each do |ns, label|
+    cmds = if ns == ""
+      COMMANDS.select { |k, _| k.length == 1 }
+    else
+      COMMANDS.select { |k, _| k.length > 1 && k.first == ns }
+    end
+    next if cmds.empty?
+    lines << "#{label}:"
+    cmds.each do |k, (desc, _)|
+      next if desc.nil?
+      lines << "  #{k.join(" ").ljust(14)}#{desc}"
+    end
+    lines << ""
+  end
+  lines.join("\n")
+end
+
+# ─── dispatch ────────────────────────────────────────────────────────────────
+
+input = ARGV.map(&:downcase)
+entry = COMMANDS[input]
+
+if entry
+  exit entry[1].call ? 0 : 1
+elsif input.length == 1 && GROUPS.key?(input[0])
+  puts usage(input[0])
+  exit 0
+else
+  puts usage
+  exit 1
+end
