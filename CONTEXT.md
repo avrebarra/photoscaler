@@ -21,7 +21,7 @@ Refine Photoscaler UI to a mobile photo-editor aesthetic — dark monochrome edi
 
 ## Status
 
-In Progress
+Ready for review
 
 ## Review notes
 
