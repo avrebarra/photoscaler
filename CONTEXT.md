@@ -1,30 +1,37 @@
-# CONTEXT.md — workpool/B3D6S3F-refine-ui-mobile-photo-editor-aesthetic
+# CONTEXT — workpool/PGZ62RW-add-crop-image-feature
 
 ## What this branch is for
 
-Refine Photoscaler UI to a mobile photo-editor aesthetic — dark monochrome editor look, component split, phone-width column. Keep current flow (pick → options → preview → download) and ALL logic unchanged; Tailwind-only styling. Reference image `docs/ui-reference-mobile-editor.png` is dark theme, large-radius elevated cards, pill chips, full-width primary pill CTA at bottom, bold white headings + muted small labels. Electric blue accent in reference replaced with monochrome (white/black) per user choice.
+Add inline crop on the original-image preview — draggable/resizable rectangle with free + preset ratios (1:1, 4:3, 16:9, original), applied **before** scaling; cropped result replaces source for Scale → Preview → Download, with Reset to restore original. 100% client-side Canvas, no new deps.
 
 ## Origin
 
-- epiq ticket **B3D6S3F** — `refine-ui-mobile-photo-editor-aesthetic` (tag: major, ready)
-- Hub main == local main @ `91867fa` before claim
+- epiq ticket **PGZ62RW** — `add-crop-image-feature` (tag: minor, ready)
+- Based on **B3D6S3F** shell (`workpool/B3D6S3F-refine-ui-mobile-photo-editor-aesthetic`) — UI refine component split is the base; this branch composes crop into that shell per spec.
+- Hub main @ `91867fa` before claim; merge `origin/workpool/B3D6S3F-refine-ui-mobile-photo-editor-aesthetic` (f9bbce0) into PGZ62RW in clone (fast-forward, no conflicts) — see git log.
 
 ## Change map
 
-- `src/components/ui.tsx` — **CREATE** shared primitives `Chip` and `PrimaryButton` (monochrome pills, rounded-full, tokens per spec)
-- `src/components/DropZone.tsx` — **CREATE** presentational drop zone (drag-drop restyled, dashed well, file meta + remove, dark card)
-- `src/components/OptionsPanel.tsx` — **CREATE** options card (percent presets as Chips, range + number inputs, mode Chips, output dims, error slot, primary CTA)
-- `src/components/PreviewPanel.tsx` — **CREATE** preview/result card (near-black image wells rounded-xl, original/result display, download + clear CTAs)
-- `src/App.tsx` — **MODIFY** JSX only to compose new components; logic (state, handlers, imgRef, useEffect, 8000px guard, canvasToUrl naming) unchanged
-- `src/index.css` — **MODIFY only if dark base needs a touch** beyond Tailwind classes (otherwise leave as-is)
-- `tailwind.config.js` — **MODIFY only if a token needs extending** (optional)
+- `src/lib/crop.ts` — **CREATE** pure Canvas crop utility: `CropRect`, `CropAspect`, `cropImage(source, rect)` (drawImage, MAX_SIDE guard, zero-area/invalid throws), `normalizeRect(rect, naturalSize)` (clamp to [0,w]×[0,h], reject zero-area)
+- `src/components/CropOverlay.tsx` — **CREATE** inline draggable/resizable overlay (mouse+touch, Tailwind, zinc tokens): rect in natural coords → percent overlay, drag + 4 corner handles, preset chips enforce ratio, never throws
+- `src/App.tsx` — **MODIFY** add crop state (`cropRect`, `cropAspect`, `croppedSize`/`origSize` wiring), pipeline `croppedCanvas → scaleImage` (crop before scale), Reset handler, MAX_SIDE checks after crop and scale, errors → existing `error` state (text-red-500)
+- `src/components/PreviewPanel.tsx` — **MODIFY** host `CropOverlay` + aspect preset chips + Reset on the original preview hero; props extended to mount overlay; shell component split preserved
+- `src/lib/scale.ts`, `src/main.tsx`, `index.html`, `vite.config.ts`, `tailwind.config.js`, `src/index.css`, `public/*` — **READ-ONLY**
 
 ## Status
 
-Ready for review
+**Status:** In Progress
+- [x] claim workpool/PGZ62RW-add-crop-image-feature in innocent-porcupine, rebase main, merge B3D6S3F shell
+- [x] CONTEXT.md initial commit
+- [ ] create src/lib/crop.ts (contract + guards)
+- [ ] create src/components/CropOverlay.tsx (drag/resize + presets)
+- [ ] wire App.tsx pipeline + PreviewPanel host
+- [ ] verify `npx tsc -b && npx vite build` + `npx oxlint` + `npx prettier --check` clean
+- [ ] hub store
 
 ## Review notes
 
-- Logic contract untouched; verify via diff of state/handler blocks in App.tsx
-- Tokens pinned: `bg-zinc-950` app, `bg-zinc-900`/`border-zinc-800` cards, `bg-zinc-950`/`bg-black` wells, `text-white font-bold` headings, `text-xs font-medium text-zinc-500` labels, `text-zinc-400` meta, active chip `bg-white text-black`, inactive `bg-zinc-800 text-zinc-300`, CTA `bg-white text-black rounded-full py-3`, errors `text-red-500 text-sm`, column `max-w-md mx-auto`, radius cards `rounded-2xl` / wells `rounded-xl` / pills `rounded-full`.
-- `npx tsc -b && npx vite build` + `npx oxlint` + `npx prettier --check` must be clean; deps unchanged.
+- Visual tokens match B3D6S3F: zinc-950/900/800, rounded-2xl cards, rounded-xl wells, rounded-full pills, Chip/ui.tsx primitives where sensible.
+- Reuse ladder: scale.ts + canvasToUrl + Tailwind + native `drawImage(sx,sy,sw,sh)`; no new deps.
+- Guards: MAX_SIDE=8000 after cropImage and after scaleImage; errors surfaced via App error state, never swallowed; CropOverlay never throws.
+- Out-of-scope: no backend/persistence/rotation/flip/multi-crop stack/upload.
