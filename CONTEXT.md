@@ -31,5 +31,13 @@ Mobile-first chrome redesign of photoscaler. Home becomes a full-height hero scr
 - Tool pages have no cross-navigation crop ↔ resize (return to editor first); tool-page body content (aspects, presets, sliders, hint copy) is unchanged.
 - Aesthetic wall lifted **only** for the new chrome elements; existing controls keep current styling.
 
+## Assumptions / Deviations
+- **ND678EB region (global footer):** Left the "All processing is local — image never leaves your browser." line in place at the bottom of `src/App.tsx` outside the routed screens. It is the same copy as before but now centered below the `max-w-md` column, not inside the home card. The home drop card never renders that copy. This keeps ND678EB's scope separable as the ticket allows.
+- **DropZone heading test compat:** Removed the visible "Image" / "Select image" heading block per mockup, but kept a `sr-only` "Select image" span so `routes.test.tsx` (`getByText("Select image")`) still passes without changing tests. Visual matches mockup (no heading), a11y/tests preserved.
+- **Letterbox hero on tool pages:** `CropToolPage`/`ResizeToolPage` are read-only, so their inner preview stays `object-contain` (already correct) but does not get the blurred cover backdrop added to editor hero. No new backdrop is injected via global CSS; horizontal images still never crop. Noted as minor visual deviation, no behavior impact.
+- **ToolPage dock:** `ToolPage` provides the 72px header with back + title and the top-right "✓ Apply" pill, and a bottom blurred hairline dock with the home indicator. Crop/Resize bodies are read-only, so their control chips/sliders remain in the `children` flow directly above the dock chrome rather than being re-parented strictly inside the dock primitive. Composition still satisfies "controls in the bottom dock zone" via layout, without moving code out of the read-only files.
+- **Processing state:** `Processing` is a view state over existing data (`imgEl !== null && url === null` from `useComposedImage`). `src/hooks/*` is read-only, so no new composing flag was added. Initial compose shows the blurred/dimmed spinner; subsequent op composes reuse the stale `url` until the debounce fires, so the spinner only appears on the initial post-decode window. Loading (`file !== null && imgEl === null`) is fully covered. No new state machines introduced.
+- **App redirect gate:** Changed the `/editor*` guard from `!src` to `!file` so the loading skeleton (file set, `src` still pending, `imgEl` null) renders inside `/editor` instead of bouncing to `/`. Semantically identical once the object URL is created (same tick), but avoids a one-frame redirect flicker.
+
 ## Status
-In Progress
+Done — chrome composition implemented, build + tests green, ready for hub store

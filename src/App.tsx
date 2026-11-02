@@ -85,90 +85,88 @@ export default function App() {
     />
   ) : null
 
+  const hasFile = !!file
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-6">
-        <header className="flex items-center justify-between py-2">
-          <h1 className="text-xl font-bold tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">Photoscaler</h1>
-        </header>
+    <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center">
+      {error && (
+        <p className="fixed top-2 left-1/2 -translate-x-1/2 z-50 text-sm text-red-500 bg-zinc-900 px-3 py-1.5 rounded-full border border-red-900">
+          {error}
+        </p>
+      )}
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
+      {hiddenImg}
 
-        {hiddenImg}
-
+      <div className="w-full max-w-md flex-1 flex flex-col min-h-[100dvh]">
         <Routes>
-          <Route
-            path="/"
-            element={
-              <DropZone
+        <Route
+          path="/"
+          element={
+            <DropZone
+              fileName={file?.name ?? null}
+              fileSizeKb={file ? Number((file.size / 1024).toFixed(0)) : null}
+              onFile={onFilePicked}
+            />
+          }
+        />
+
+        <Route
+          path="/editor"
+          element={
+            !hasFile ? (
+              <Navigate to="/" replace />
+            ) : (
+              <EditorScreen
                 fileName={file?.name ?? null}
-                fileSizeKb={file ? Number((file.size / 1024).toFixed(0)) : null}
-                onFile={onFilePicked}
-                onRemove={() => {
-                  setFile(null)
-                  navigate("/")
-                }}
+                imgEl={imgEl}
+                origSize={origSize}
+                ops={ops}
+                onUndo={() => setOps((prev) => prev.slice(0, -1))}
+                onReset={() => setOps([])}
+                onDownload={handleDownload}
+                onOpenTool={(tool) => navigate(tool === "crop" ? "/editor/crop" : "/editor/resize")}
               />
-            }
-          />
+            )
+          }
+        />
 
-          <Route
-            path="/editor"
-            element={
-              !src ? (
-                <Navigate to="/" replace />
-              ) : (
-                <EditorScreen
-                  imgEl={imgEl}
-                  origSize={origSize}
-                  ops={ops}
-                  onUndo={() => setOps((prev) => prev.slice(0, -1))}
-                  onReset={() => setOps([])}
-                  onDownload={handleDownload}
-                  onRemove={() => setFile(null)}
-                  onOpenTool={(tool) => navigate(tool === "crop" ? "/editor/crop" : "/editor/resize")}
-                />
-              )
-            }
-          />
+        <Route
+          path="/editor/crop"
+          element={
+            !hasFile ? (
+              <Navigate to="/" replace />
+            ) : (
+              <CropToolPage
+                imgEl={imgEl}
+                origSize={origSize}
+                baseOps={ops}
+                onApply={applyOp}
+              />
+            )
+          }
+        />
 
-          <Route
-            path="/editor/crop"
-            element={
-              !src ? (
-                <Navigate to="/" replace />
-              ) : (
-                <CropToolPage
-                  imgEl={imgEl}
-                  origSize={origSize}
-                  baseOps={ops}
-                  onApply={applyOp}
-                />
-              )
-            }
-          />
-
-          <Route
-            path="/editor/resize"
-            element={
-              !src ? (
-                <Navigate to="/" replace />
-              ) : (
-                <ResizeToolPage
-                  imgEl={imgEl}
-                  origSize={origSize}
-                  baseOps={ops}
-                  onApply={applyOp}
-                />
-              )
-            }
-          />
+        <Route
+          path="/editor/resize"
+          element={
+            !hasFile ? (
+              <Navigate to="/" replace />
+            ) : (
+              <ResizeToolPage
+                imgEl={imgEl}
+                origSize={origSize}
+                baseOps={ops}
+                onApply={applyOp}
+              />
+            )
+          }
+        />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-
-        <p className="text-center text-xs text-zinc-500">All processing is local — image never leaves your browser.</p>
       </div>
+
+      <p className="w-full max-w-md mx-auto text-center text-xs text-zinc-500 py-4 px-6">All processing is local — image never leaves your browser.</p>
     </div>
   )
 }

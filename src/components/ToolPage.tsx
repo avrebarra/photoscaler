@@ -1,8 +1,9 @@
 import type { ReactNode } from "react"
-import { Link } from "react-router-dom"
+import { Check } from "lucide-react"
+import { ChromeHeader, Dock, PillBtn } from "./chrome"
 
-// shared tool-page shell: back header + title + tool body + apply footer.
-// backHref is path-based — deep links can never eject the app.
+// shared tool-page shell: 72px header (back + title left, Apply pill right) + content + docked controls zone.
+// props unchanged — children passthrough holds Crop/Resize bodies.
 export function ToolPage({
   title,
   backHref,
@@ -17,30 +18,26 @@ export function ToolPage({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-4 shadow-[0_4px_16px_rgba(0,0,0,0.5),0_1px_3px_rgba(0,0,0,0.4)]">
-      <div className="flex items-center justify-between">
-        <Link
-          to={backHref}
-          className="rounded-full bg-zinc-800 px-4 py-1.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-all active:scale-[0.98] shadow-[0_1px_4px_rgba(0,0,0,0.4),0_1px_2px_rgba(0,0,0,0.3)] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] no-underline"
-        >
-          ← Back
-        </Link>
-        <h2 className="text-sm font-bold text-white">{title}</h2>
-        <div className="w-16" />
-      </div>
-
-      {children}
-
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onApply}
-          disabled={applyDisabled}
-          className="flex-1 rounded-full bg-white py-3 text-base font-semibold text-black hover:bg-zinc-100 transition-all active:scale-[0.98] shadow-[0_3px_12px_rgba(0,0,0,0.5),0_1px_3px_rgba(0,0,0,0.4)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_2px_rgba(0,0,0,0.2)] disabled:shadow-none disabled:active:scale-100 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
+    <div className="flex flex-col min-h-[100dvh] bg-zinc-950">
+      <ChromeHeader title={title} backHref={backHref}>
+        <PillBtn label={`Apply ${title.toLowerCase()}`} onClick={onApply} disabled={applyDisabled}>
+          <Check size={17} strokeWidth={2} />
           Apply
-        </button>
+        </PillBtn>
+      </ChromeHeader>
+
+      <div className="flex-1 min-h-0 flex flex-col px-6 pt-4 pb-2">{children}</div>
+
+      {/* bottom dock chrome — controls live in children (Crop/Resize bodies are read-only),
+          dock provides the blurred hairline + home indicator per spec */}
+      <div className="shrink-0 border-t border-white/[0.08] bg-[rgba(9,9,11,0.86)] backdrop-blur-[22px] px-6 pt-3 pb-7 flex flex-col items-center">
+        <div className="h-[5px] w-[110px] rounded-full bg-white/25" />
       </div>
-    </section>
+    </div>
   )
+}
+
+/* helper for tool bodies to wrap their controls in the dock look */
+export function ToolDock({ children }: { children: ReactNode }) {
+  return <Dock>{children}</Dock>
 }
