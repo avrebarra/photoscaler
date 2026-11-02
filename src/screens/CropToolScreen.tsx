@@ -8,8 +8,8 @@ import {
   type Size,
 } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
-import { CropOverlay } from "./CropOverlay"
-import { ToolPage, ToolDock } from "./ToolPage"
+import { CropOverlay } from "../components/CropOverlay"
+import { ToolPage, ToolDock } from "../components/ToolPage"
 
 const ASPECTS: { label: string; value: CropAspect }[] = [
   { label: "Free", value: "free" },
@@ -21,7 +21,7 @@ const ASPECTS: { label: string; value: CropAspect }[] = [
 
 // crop tool: crops the composed stage (everything applied so far). the draft
 // is seeded immediately — no Enable button — and lives locally until Apply.
-export function CropToolPage({
+export function CropToolScreen({
   imgEl,
   origSize,
   baseOps,

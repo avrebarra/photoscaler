@@ -2,10 +2,10 @@ import { useEffect, useState } from "react"
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom"
 import { canvasToUrl } from "./lib/scale"
 import { compose, type CropOp, type Op, type ResizeOp, type Size } from "./lib/pipeline"
-import { DropZone } from "./components/DropZone"
-import { EditorScreen } from "./components/EditorScreen"
-import { CropToolPage } from "./components/CropToolPage"
-import { ResizeToolPage } from "./components/ResizeToolPage"
+import { WelcomeScreen } from "./screens/WelcomeScreen"
+import { EditorScreen } from "./screens/EditorScreen"
+import { CropToolScreen } from "./screens/CropToolScreen"
+import { ResizeToolScreen } from "./screens/ResizeToolScreen"
 
 export function buildDownloadName(name: string, date: Date): string {
   const base = name.replace(/\.[^.]+$/, "") || "image"
@@ -99,68 +99,65 @@ export default function App() {
 
       <div className="w-full max-w-md flex-1 flex flex-col min-h-[100dvh]">
         <Routes>
-        <Route
-          path="/"
-          element={
-            <DropZone
-              fileName={file?.name ?? null}
-              fileSizeKb={file ? Number((file.size / 1024).toFixed(0)) : null}
-              onFile={onFilePicked}
-            />
-          }
-        />
-
-        <Route
-          path="/editor"
-          element={
-            !hasFile ? (
-              <Navigate to="/" replace />
-            ) : (
-              <EditorScreen
+          <Route
+            path="/"
+            element={
+              <WelcomeScreen
                 fileName={file?.name ?? null}
-                imgEl={imgEl}
-                origSize={origSize}
-                ops={ops}
-                onUndo={() => setOps((prev) => prev.slice(0, -1))}
-                onReset={() => setOps([])}
-                onDownload={handleDownload}
-                onOpenTool={(tool) => navigate(tool === "crop" ? "/editor/crop" : "/editor/resize")}
+                fileSizeKb={file ? Number((file.size / 1024).toFixed(0)) : null}
+                onFile={onFilePicked}
               />
-            )
-          }
-        />
+            }
+          />
 
-        <Route
-          path="/editor/crop"
-          element={
-            !hasFile ? (
-              <Navigate to="/" replace />
-            ) : (
-              <CropToolPage
-                imgEl={imgEl}
-                origSize={origSize}
-                baseOps={ops}
-                onApply={applyOp}
-              />
-            )
-          }
-        />
+          <Route
+            path="/editor"
+            element={
+              !hasFile ? (
+                <Navigate to="/" replace />
+              ) : (
+                <EditorScreen
+                  fileName={file?.name ?? null}
+                  imgEl={imgEl}
+                  origSize={origSize}
+                  ops={ops}
+                  onUndo={() => setOps((prev) => prev.slice(0, -1))}
+                  onReset={() => setOps([])}
+                  onDownload={handleDownload}
+                  onOpenTool={(tool) =>
+                    navigate(tool === "crop" ? "/editor/crop" : "/editor/resize")
+                  }
+                />
+              )
+            }
+          />
 
-        <Route
-          path="/editor/resize"
-          element={
-            !hasFile ? (
-              <Navigate to="/" replace />
-            ) : (
-              <ResizeToolPage
-                imgEl={imgEl}
-                origSize={origSize}
-                baseOps={ops}
-                onApply={applyOp}
-              />
-            )
-          }
-        />
+          <Route
+            path="/editor/crop"
+            element={
+              !hasFile ? (
+                <Navigate to="/" replace />
+              ) : (
+                <CropToolScreen imgEl={imgEl} origSize={origSize} baseOps={ops} onApply={applyOp} />
+              )
+            }
+          />
+
+          <Route
+            path="/editor/resize"
+            element={
+              !hasFile ? (
+                <Navigate to="/" replace />
+              ) : (
+                <ResizeToolScreen
+                  imgEl={imgEl}
+                  origSize={origSize}
+                  baseOps={ops}
+                  onApply={applyOp}
+                />
+              )
+            }
+          />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -1,7 +1,7 @@
 import type { Op, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
-import { ToolPicker } from "./ToolPicker"
-import { ChromeHeader, BarBtn, PillBtn, Dock } from "./chrome"
+import { ToolPicker } from "../components/ToolPicker"
+import { ChromeHeader, BarBtn, PillBtn, Dock } from "../components/chrome"
 import { Undo2, RotateCcw, Download } from "lucide-react"
 
 export function EditorScreen({
