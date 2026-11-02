@@ -186,23 +186,125 @@
       `;
     }
 
-    // resize — own page
+    // resize — own page; tick dial scrub + Snapseed-style settings overlay (QN5Z74X):
+    // dial replaces slider; presets removed; dimension badge left of % readout; gear opens
+    // overlay with mode chips + grain toggle/strength
+    const MODE_META = {
+      smooth:   { chip: "Blur" },
+      lanczos:  { chip: "Lanczos" },
+      pixelate: { chip: "Pixelate" },
+    };
     function ResizeScreen({ goBack }) {
+      const [pct, setPct] = useState(150);
+      const [settingsOpen, setSettingsOpen] = useState(false);
+      const [mode, setMode] = useState("smooth");
+      const [grainEnabled, setGrainEnabled] = useState(false);
+      const [strength, setStrength] = useState(35);
+      const ORIG = { w: 900, h: 700 };
+      const MINP = 2, MAXP = 400; // demo: ceil(10/700*100)=2 … long side cap
+      const clampInt = (v) => Math.round(Math.max(MINP, Math.min(MAXP, v)));
+      const clampFloat = (v) => Math.max(MINP, Math.min(MAXP, v));
+      const [dragging, setDragging] = useState(false);
+      const [atBound, setAtBound] = useState(null);
+      const fracRef = preactHooks.useRef(pct);
+      const stripRef = preactHooks.useRef(null);
+      preactHooks.useEffect(() => { fracRef.current = pct; if (stripRef.current) stripRef.current.style.transform = `translate3d(${-pct*10}px,0,0)`; }, [pct]);
+      const updateStrip = (frac, animate) => {
+        const el = stripRef.current; if (!el) return;
+        el.style.transition = animate ? "transform 180ms cubic-bezier(0.2,0.8,0.2,1)" : "none";
+        el.style.transform = `translate3d(${-frac*10}px,0,0)`;
+      };
+      const drag = (e) => {
+        const el = e.currentTarget; const startX = e.clientX; const startFrac = fracRef.current; let curFrac = startFrac; let vel = 0; let lastX = startX; let lastT = performance.now();
+        setDragging(true); el.setPointerCapture(e.pointerId);
+        const move = (ev) => {
+          const now = performance.now(); const dx = ev.clientX - startX; let next = startFrac - dx/3;
+          if (next < MINP) { const over = MINP - next; next = MINP - Math.pow(over,0.72)*0.5; }
+          else if (next > MAXP) { const over = next - MAXP; next = MAXP + Math.pow(over,0.72)*0.5; }
+          curFrac = next; fracRef.current = next; const dt = Math.max(1, now-lastT); vel = (ev.clientX - lastX)/dt * -0.33; lastX = ev.clientX; lastT = now;
+          updateStrip(next,false); const intNext = clampInt(next); setAtBound(intNext<=MINP?"min":intNext>=MAXP?"max":null); if (intNext!==pct) setPct(intNext);
+        };
+        const up = (ev) => {
+          try{ el.releasePointerCapture(ev.pointerId);}catch{}
+          el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up);
+          setDragging(false);
+          let target = clampFloat(curFrac + vel*90); target = clampFloat(target); const snapped = clampInt(target);
+          fracRef.current = snapped; updateStrip(snapped,true); setAtBound(snapped<=MINP?"min":snapped>=MAXP?"max":null); if(snapped!==pct) setPct(snapped);
+          setTimeout(()=>setAtBound(null),260);
+        };
+        el.addEventListener("pointermove", move); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+      };
+      const handleWheel = (e) => { e.preventDefault(); const dir=Math.sign(e.deltaY); const step=dir>0?-1:dir<0?1:0; if(!step) return; const next=clampInt(fracRef.current+step); fracRef.current=next; updateStrip(next,true); setAtBound(next<=MINP?"min":next>=MAXP?"max":null); setPct(next); setTimeout(()=>setAtBound(null),220); };
+      const handleKey = (e) => { let next=null; if(e.key==="ArrowRight"||e.key==="ArrowUp") next=clampInt(pct+1); else if(e.key==="ArrowLeft"||e.key==="ArrowDown") next=clampInt(pct-1); else if(e.key==="Home") next=MINP; else if(e.key==="End") next=MAXP; if(next==null) return; e.preventDefault(); fracRef.current=next; updateStrip(next,true); setAtBound(next<=MINP?"min":next>=MAXP?"max":null); setPct(next); setTimeout(()=>setAtBound(null),220); };
+      const out = { w: Math.round(ORIG.w * pct / 100), h: Math.round(ORIG.h * pct / 100) };
+      const IconGear = () => mk("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z|M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z", 16);
       return html`
-        <div class="flex flex-col h-full">
+        <div class="relative flex flex-col h-full">
           <${Header} title="Resize" onBack=${goBack} children=${html`<${PillBtn} label="Apply resize" onClick=${goBack}><${IconCheck} />Apply</${PillBtn}>`} />
           <div class="flex-1 min-h-0 flex flex-col"><${Hero} /></div>
           <${Dock}>
-            <div class="flex gap-1.5 justify-between">
-              ${[25,50,100,150,200,400].map(x => html`
-                <button class="flex-1 h-10 rounded-full text-[12.5px] font-medium tabular-nums transition active:scale-95 ${x===150 ? 'bg-white text-black' : 'bg-white/10 text-zinc-300'}">${x}%</button>
-              `)}
+            <div class="flex items-center gap-2">
+              <span class="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-zinc-300 tabular-nums">${out.w} × ${out.h} px</span>
+              <span class="flex-1 text-center text-[24px] font-bold tracking-[-.01em] text-white tabular-nums leading-none">${pct}%</span>
+              <button aria-label="Resize settings" onClick=${() => setSettingsOpen(true)} class="shrink-0 h-9 w-9 rounded-full grid place-items-center bg-white/10 text-zinc-300 active:bg-white/20 transition"><${IconGear} /></button>
             </div>
-            <div class="flex items-center gap-3.5 px-1.5">
-              <input type="range" min="10" max="400" value="150" class="flex-1 accent-white" />
-              <span class="text-[14.5px] font-medium tabular-nums text-zinc-100 w-[52px] text-right">150%</span>
+            <div
+              class=${`relative h-[52px] rounded-xl bg-zinc-950 border overflow-hidden touch-none select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${dragging ? 'border-zinc-700 cursor-grabbing' : 'border-zinc-800 cursor-ew-resize'} ${atBound ? 'brightness-110' : ''}`}
+              onPointerDown=${drag}
+              onWheel=${handleWheel}
+              onKeyDown=${handleKey}
+              tabIndex="0"
+              role="slider" aria-label="Scale dial" aria-valuenow=${pct} aria-valuemin=${MINP} aria-valuemax=${MAXP}
+            >
+              <div class="pointer-events-none absolute inset-0" style="background: linear-gradient(to right, transparent, black 12%, black 88%, transparent); opacity:0.6; -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent)"></div>
+              <div ref=${stripRef} class="absolute inset-y-0 left-1/2 will-change-transform" style=${`transform: translate3d(${-pct*10}px,0,0); width: 10000px; margin-left: 0px`}>
+                ${Array.from({length: 501}, (_,k) => k).map(i => {
+                  const isMajor = i%10===0; const isMid=i%5===0; const h=isMajor?18:isMid?12:7; const op=isMajor?0.9:isMid?0.45:0.22; const showLabel=isMajor && i%25===0;
+                  return html`<span key=${i} style=${`position:absolute;left:${i*10}px;bottom:14px;width:1px;height:${h}px;opacity:${op};background:white;transform:translateX(-0.5px)`}>${showLabel ? html`<em style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:9px;font-style:normal;color:rgba(255,255,255,0.55);font-weight:500;letter-spacing:0.02em">${i}</em>` : null}</span>`;
+                })}
+              </div>
+              <div class=${`absolute left-1/2 top-0 h-full w-0 -translate-x-1/2 pointer-events-none transition-transform duration-200 ${dragging ? 'scale-y-[1.04]' : ''}`}>
+                <div class=${`h-full w-px mx-auto transition-colors duration-200 ${atBound ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.6)]' : dragging ? 'bg-white/95' : 'bg-white/90'}`}></div>
+                <div class=${`absolute top-0 left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-white -mt-[1px] transition-all duration-200 ${dragging ? 'scale-125 shadow-[0_2px_10px_rgba(255,255,255,0.5)]' : ''} ${atBound ? 'scale-150 shadow-[0_0_12px_rgba(255,255,255,0.7)]' : ''}`}></div>
+                <div class="absolute bottom-[10px] left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-white/90" style="box-shadow:0 1px 6px rgba(0,0,0,0.6)"></div>
+              </div>
+              <span class=${`pointer-events-none absolute right-2 top-1.5 text-[9px] font-medium tracking-widest text-white/25 transition-opacity duration-300 ${dragging ? 'opacity-0' : 'opacity-100'}`}>DRAG</span>
             </div>
           </${Dock}>
+          <!-- Snapseed-style settings overlay: scrim over everything, bottom sheet with mode chips + per-mode param -->
+          ${settingsOpen && html`
+            <div class="absolute inset-0 z-30 flex flex-col">
+              <div class="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm" onClick=${() => setSettingsOpen(false)}></div>
+              <div class="dock relative mt-auto mx-3 mb-10 rounded-[24px] border hairline px-5 pt-4 pb-6 flex flex-col gap-4 shadow-[0_20px_50px_rgba(0,0,0,.5)]">
+                <div class="flex items-center justify-between">
+                  <span class="text-[14.5px] font-semibold text-white">Resize settings</span>
+                  <button aria-label="Close settings" onClick=${() => setSettingsOpen(false)} class="h-9 w-9 rounded-full grid place-items-center text-zinc-300 active:bg-white/10 transition"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <span class="text-xs font-medium text-zinc-500">Interpolation</span>
+                  <div class="flex gap-2">
+                    ${["smooth","lanczos","pixelate"].map(m => html`
+                      <button onClick=${() => setMode(m)} class="flex-1 h-10 rounded-full text-[12.5px] font-medium transition active:scale-95 ${m===mode ? 'bg-white text-black' : 'bg-white/10 text-zinc-300'}">${MODE_META[m].chip}</button>
+                    `)}
+                  </div>
+                </div>
+                <div class="flex flex-col gap-2 rounded-xl bg-zinc-950 border hairline px-3 py-3">
+                  <label class="flex items-center justify-between cursor-pointer">
+                    <span class="text-xs font-medium text-zinc-500">Grain (on top)</span>
+                    <input type="checkbox" checked=${grainEnabled} onChange=${(e) => setGrainEnabled(e.target.checked)} class="accent-white" />
+                  </label>
+                  ${grainEnabled && html`
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-medium text-zinc-500">Grain strength</span>
+                      <span class="text-xs text-zinc-400 tabular-nums">${strength}</span>
+                    </div>
+                    <input type="range" min="0" max="100" step="1" value=${strength} onInput=${(e) => setStrength(Number(e.target.value))} class="flex-1 accent-white" />
+                  `}
+                </div>
+                <button onClick=${() => setSettingsOpen(false)} class="h-10 rounded-full bg-white text-black text-[13.5px] font-semibold active:scale-95 transition">Done</button>
+              </div>
+            </div>
+          `}
         </div>
       `;
     }
@@ -302,7 +404,7 @@
             <${Phone} title="Crop" caption="Own page. Apply commits, back discards.">
               <${CropScreen} goBack=${() => {}} />
             </${Phone}>
-            <${Phone} title="Resize" caption="Own page. Presets + slider at the thumb.">
+            <${Phone} title="Resize" caption="Own page. Tick dial scrub + settings overlay (Snapseed-style).">
               <${ResizeScreen} goBack=${() => {}} />
             </${Phone}>
             <${Phone} title="Processing" caption="Transient state while ops apply. Controls dim, spinner owns the moment.">
@@ -314,7 +416,7 @@
           </div>
 
           <footer class="text-center mt-14 text-[12px] text-black/40">
-            Composition only — control styling and tool bodies unchanged · mockup for ticket RHZ6PJF
+            Composition — resize: tick dial scrub + Snapseed-style settings overlay (QN5Z74X) · base: RHZ6PJF
           </footer>
         </div>
       `;

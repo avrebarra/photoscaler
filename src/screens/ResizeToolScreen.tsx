@@ -1,18 +1,24 @@
 import { useMemo, useState } from "react"
+import { Settings, X } from "lucide-react"
 import type { ScaleMode } from "../lib/scale"
 import type { Op, ResizeOp, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
 import { Chip } from "../components/ui"
 import { ToolPage, ToolDock } from "../components/ToolPage"
+import { TickDial } from "../components/TickDial"
 
-const PRESETS = [25, 50, 100, 150, 200, 400]
 const MAX_SIDE = 8000
 
-function clampPercent(raw: number, origW: number | null): number {
-  if (origW == null || origW <= 0) return Math.max(10, Math.min(400, raw))
-  const maxPercent = Math.floor((MAX_SIDE / origW) * 100)
-  const upper = Math.max(10, maxPercent)
-  return Math.min(upper, Math.max(10, raw))
+// true 10px shortest-side floor, 8000px longest-side ceiling
+function clampPercent(raw: number, origSize: Size | null): number {
+  if (!origSize || origSize.w <= 0 || origSize.h <= 0) {
+    return Math.max(10, Math.min(400, Math.round(raw)))
+  }
+  const minSide = Math.min(origSize.w, origSize.h)
+  const maxSide = Math.max(origSize.w, origSize.h)
+  const minPercent = Math.max(1, Math.ceil((10 / minSide) * 100))
+  const maxPercent = Math.max(10, Math.floor((MAX_SIDE / maxSide) * 100))
+  return Math.min(maxPercent, Math.max(minPercent, Math.round(raw)))
 }
 
 function clampGrainStrength(v: number): number {
@@ -20,8 +26,8 @@ function clampGrainStrength(v: number): number {
   return Math.max(0, Math.min(100, Math.round(v)))
 }
 
-// resize tool: scales the composed stage. draft is local — Back drops it,
-// Apply appends a resize op. preserves GW2JJ7P editable width binding.
+// resize tool: dial replaces slider, dimension badge + settings overlay (Snapseed-style).
+// presets removed; numeric % / width inputs removed from main dock (available via dial drag/wheel/keys).
 export function ResizeToolScreen({
   imgEl,
   origSize,
@@ -37,6 +43,7 @@ export function ResizeToolScreen({
   const [mode, setMode] = useState<ScaleMode>("smooth")
   const [grainEnabled, setGrainEnabled] = useState(false)
   const [grainStrength, setGrainStrength] = useState(35)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const draftOps = useMemo<Op[]>(() => {
     const op: ResizeOp = grainEnabled
@@ -44,44 +51,21 @@ export function ResizeToolScreen({
       : { type: "resize", percent, mode }
     return [...baseOps, op]
   }, [baseOps, percent, mode, grainEnabled, grainStrength])
-  const { url, stageSize: outSize } = useComposedImage(imgEl, origSize, draftOps)
 
-  const clampW = origSize?.w ?? null
-  const maxPercent = clampW ? Math.floor((MAX_SIDE / clampW) * 100) : 400
-  const computedW = clampW ? Math.round((clampW * percent) / 100) : null
+  const { url } = useComposedImage(imgEl, origSize, draftOps)
+
+  // bounds for dial — derived from origSize
+  const minPercent = (() => {
+    if (!origSize || origSize.w <= 0 || origSize.h <= 0) return 10
+    return Math.max(1, Math.ceil((10 / Math.min(origSize.w, origSize.h)) * 100))
+  })()
+  const maxPercent = (() => {
+    if (!origSize || origSize.w <= 0 || origSize.h <= 0) return 400
+    return Math.max(10, Math.floor((MAX_SIDE / Math.max(origSize.w, origSize.h)) * 100))
+  })()
+
+  const computedW = origSize ? Math.round((origSize.w * percent) / 100) : null
   const computedH = origSize ? Math.round((origSize.h * percent) / 100) : null
-  const targetW = outSize.w > 0 ? outSize.w : computedW
-  const targetH = outSize.h > 0 ? outSize.h : computedH
-  const displayW = computedW
-  const displayH = computedH
-
-  function handleWidthChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const raw = e.target.value
-    if (raw === "") return
-    const newW = Number(raw)
-    if (!Number.isFinite(newW) || newW <= 0) return
-    if (!clampW) return
-    const rawPercent = Math.round((newW / clampW) * 100)
-    setPercent(clampPercent(rawPercent, clampW))
-  }
-
-  function handlePercentChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const raw = Number(e.target.value)
-    if (!Number.isFinite(raw)) return
-    if (raw <= 0) {
-      setPercent(10)
-      return
-    }
-    setPercent(clampPercent(Math.round(raw), clampW))
-  }
-
-  function handleSliderChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setPercent(clampPercent(Number(e.target.value), clampW))
-  }
-
-  function handlePreset(p: number) {
-    setPercent(clampPercent(p, clampW))
-  }
 
   function handleApply() {
     if (grainEnabled) {
@@ -93,165 +77,138 @@ export function ResizeToolScreen({
 
   return (
     <ToolPage title="Resize" backHref="/editor" onApply={handleApply}>
-      {/* hero — letterboxed: blurred cover backdrop + object-contain foreground */}
+      {/* hero — letterboxed, image containment Only */}
       <div className="flex-1 min-h-0 flex flex-col px-3 pt-4">
         <div className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]">
           {url ? (
-            <>
-              <img
-                src={url}
-                alt="resize canvas"
-                className="absolute inset-0 h-full w-full object-contain"
-              />
-            </>
+            <img src={url} alt="resize canvas" className="absolute inset-0 h-full w-full object-contain" />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-xs text-zinc-500">Rendering…</span>
             </div>
           )}
+
+          {/* Snapseed-style settings overlay: scrim + bottom sheet, image stays faintly visible */}
+          {settingsOpen && (
+            <div className="absolute inset-0 z-10 flex flex-col">
+              <button
+                type="button"
+                aria-label="Close settings"
+                onClick={() => setSettingsOpen(false)}
+                className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
+              />
+              <div className="relative mt-auto mx-2 mb-2 rounded-[24px] border border-white/[0.08] bg-[rgba(9,9,11,0.96)] backdrop-blur-[22px] px-5 pt-4 pb-5 flex flex-col gap-4 shadow-[0_20px_50px_rgba(0,0,0,.5)]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[14.5px] font-semibold text-white">Resize settings</span>
+                  <button
+                    type="button"
+                    aria-label="Close settings"
+                    onClick={() => setSettingsOpen(false)}
+                    className="h-9 w-9 rounded-full grid place-items-center text-zinc-300 active:bg-white/10 transition"
+                  >
+                    <X size={17} strokeWidth={2} />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-medium text-zinc-500">Interpolation</span>
+                  <div className="flex gap-2">
+                    <Chip active={mode === "smooth"} onClick={() => setMode("smooth")}>
+                      Blur
+                    </Chip>
+                    <Chip active={mode === "lanczos"} onClick={() => setMode("lanczos")}>
+                      Lanczos
+                    </Chip>
+                    <Chip active={mode === "pixelate"} onClick={() => setMode("pixelate")}>
+                      Pixelate
+                    </Chip>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3">
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-xs font-medium text-zinc-500">Grain (on top of blur)</span>
+                    <input
+                      type="checkbox"
+                      aria-label="Enable grain"
+                      checked={grainEnabled}
+                      onChange={(e) => setGrainEnabled(e.target.checked)}
+                      className="accent-white"
+                    />
+                  </label>
+                  {grainEnabled && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-zinc-500">Grain strength</span>
+                        <span className="text-xs text-zinc-400 tabular-nums">{grainStrength}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          aria-label="Grain strength"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={grainStrength}
+                          onChange={(e) => setGrainStrength(clampGrainStrength(Number(e.target.value)))}
+                          className="flex-1 accent-white"
+                        />
+                        <input
+                          type="number"
+                          aria-label="Grain strength value"
+                          min={0}
+                          max={100}
+                          value={grainStrength}
+                          onChange={(e) => {
+                            const v = Number(e.target.value)
+                            if (!Number.isFinite(v)) return
+                            setGrainStrength(clampGrainStrength(v))
+                          }}
+                          className="w-20 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(false)}
+                  className="h-10 rounded-full bg-white text-black text-[13.5px] font-semibold active:scale-[0.98] transition"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* dock — horizontal centered per mockup */}
+      {/* dock — badge + % + gear + tick dial (presets removed) */}
       <ToolDock>
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-medium text-zinc-500">Scale · {percent}%</span>
-          {displayW != null && displayH != null && (
-            <span className="text-xs text-zinc-400">
-              Output: {displayW} × {displayH} px
-            </span>
-          )}
-        </div>
-        {/* preset row — mockup: flex gap-1.5 justify-between, flex-1 h-10 */}
-        <div className="flex gap-1.5 justify-between">
-          {PRESETS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => handlePreset(p)}
-              className={`flex-1 h-10 rounded-full text-[12.5px] font-medium tabular-nums transition active:scale-[0.98] ${
-                percent === p ? "bg-white text-black" : "bg-white/10 text-zinc-300"
-              }`}
-            >
-              {p}%
-            </button>
-          ))}
-        </div>
-
-        {/* slider row — mockup: flex items-center gap-3.5 px-1.5, range flex-1 accent-white */}
-        <div className="flex items-center gap-3.5 px-1.5">
-          <input
-            type="range"
-            min={10}
-            max={Math.max(10, Math.min(400, maxPercent))}
-            step={5}
-            value={Math.min(percent, Math.max(10, Math.min(400, maxPercent)))}
-            onChange={handleSliderChange}
-            className="flex-1 accent-white"
-          />
-          <span className="text-[14.5px] font-medium tabular-nums text-zinc-100 w-[52px] text-right">
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-zinc-300 tabular-nums">
+            {computedW != null && computedH != null ? `${computedW} × ${computedH} px` : "— × — px"}
+          </span>
+          <span className="flex-1 text-center text-[24px] font-bold tracking-[-.01em] text-white tabular-nums leading-none">
             {percent}%
           </span>
+          <button
+            type="button"
+            aria-label="Resize settings"
+            onClick={() => setSettingsOpen(true)}
+            className="shrink-0 h-9 w-9 rounded-full grid place-items-center bg-white/10 text-zinc-300 active:bg-white/20 transition"
+          >
+            <Settings size={16} strokeWidth={1.8} />
+          </button>
         </div>
 
-        {/* numeric percent input — kept for parity inside dock */}
-        <div className="flex items-center gap-2 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3 shadow-[inset_0_1px_4px_rgba(0,0,0,0.4)]">
-          <span className="text-xs font-medium text-zinc-500 shrink-0">Scale</span>
-          <input
-            type="number"
-            min={10}
-            max={clampW ? Math.max(10, maxPercent) : 800}
-            value={percent}
-            onChange={handlePercentChange}
-            className="flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]"
-          />
-          <span className="text-sm text-zinc-500">%</span>
-        </div>
-
-        {/* editable target width — aspect locked, height derived */}
-        <div className="flex items-center gap-2 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3 shadow-[inset_0_1px_4px_rgba(0,0,0,0.4)]">
-          <span className="text-xs font-medium text-zinc-500 shrink-0">Width</span>
-          <input
-            type="number"
-            aria-label="Target width"
-            placeholder={computedW != null ? String(computedW) : "—"}
-            value={targetW ?? ""}
-            onChange={handleWidthChange}
-            disabled={clampW == null}
-            min={clampW ? Math.max(1, Math.round((clampW * 10) / 100)) : undefined}
-            max={MAX_SIDE}
-            className="flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)] disabled:opacity-40 disabled:cursor-not-allowed"
-          />
-          <span className="text-xs text-zinc-500 shrink-0">× {targetH ?? "—"} px</span>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <span className="text-xs font-medium text-zinc-500">Interpolation</span>
-          <div className="flex gap-2">
-            <Chip active={mode === "smooth"} onClick={() => setMode("smooth")}>
-              Blur (smooth)
-            </Chip>
-            <Chip active={mode === "lanczos"} onClick={() => setMode("lanczos")}>
-              Lanczos (sharp)
-            </Chip>
-            <Chip active={mode === "pixelate"} onClick={() => setMode("pixelate")}>
-              Pixelate
-            </Chip>
-          </div>
-          <p className="text-xs text-zinc-500">
-            {mode === "smooth"
-              ? "Bilinear-like · good for photos"
-              : mode === "lanczos"
-                ? "Lanczos3 · sharper upscale, keeps edges"
-                : "Nearest-neighbor · keeps hard pixels"}
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3">
-          <label className="flex items-center justify-between cursor-pointer">
-            <span className="text-xs font-medium text-zinc-500">Grain (on top of blur)</span>
-            <input
-              type="checkbox"
-              aria-label="Enable grain"
-              checked={grainEnabled}
-              onChange={(e) => setGrainEnabled(e.target.checked)}
-              className="accent-white"
-            />
-          </label>
-          {grainEnabled && (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-zinc-500">Grain strength</span>
-                <span className="text-xs text-zinc-400">{grainStrength}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  aria-label="Grain strength"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={grainStrength}
-                  onChange={(e) => setGrainStrength(clampGrainStrength(Number(e.target.value)))}
-                  className="flex-1 accent-white"
-                />
-                <input
-                  type="number"
-                  aria-label="Grain strength value"
-                  min={0}
-                  max={100}
-                  value={grainStrength}
-                  onChange={(e) => {
-                    const v = Number(e.target.value)
-                    if (!Number.isFinite(v)) return
-                    setGrainStrength(clampGrainStrength(v))
-                  }}
-                  className="w-20 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500"
-                />
-              </div>
-            </>
-          )}
-        </div>
+        <TickDial
+          percent={percent}
+          minPercent={minPercent}
+          maxPercent={maxPercent}
+          onChange={(next) => setPercent(clampPercent(next, origSize))}
+        />
       </ToolDock>
     </ToolPage>
   )

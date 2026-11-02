@@ -252,9 +252,9 @@ export function compose(base: ComposeSource, origSize: Size, ops: Op[], scale: n
         ctx.drawImage(source, srcRect.x, srcRect.y, srcRect.width, srcRect.height, 0, 0, srcRect.width, srcRect.height)
       }
     } else {
-      // validate resize op
-      if (!Number.isFinite(op.percent) || op.percent < 10) {
-        throw new Error("Invalid percent: must be >= 10")
+      // validate resize op — allow down to 1% for true 10px shortest-side floor (large images)
+      if (!Number.isFinite(op.percent) || op.percent < 1) {
+        throw new Error("Invalid percent: must be >= 1")
       }
       const rawMode = (op as unknown as { mode: string }).mode
       const mode = normalizeMode(rawMode)

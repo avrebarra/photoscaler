@@ -179,8 +179,8 @@ export function scaleImage(
   grainStrength: number = 0,
   // legacy alias: 4th arg was noiseStrength when mode was "noise"
 ): { canvas: HTMLCanvasElement; width: number; height: number } {
-  if (!Number.isFinite(percent) || percent < 10) {
-    throw new Error("Invalid percent: must be >= 10")
+  if (!Number.isFinite(percent) || percent < 1) {
+    throw new Error("Invalid percent: must be >= 1")
   }
   // legacy: scaleImage(img, 100, "noise", 35) → smooth + grain
   let effectiveMode: ScaleMode

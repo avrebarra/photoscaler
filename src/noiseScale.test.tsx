@@ -148,7 +148,7 @@ describe("grain + interpolation", () => {
     ).toThrow(/Output too large/)
   })
 
-  it("ResizeToolPage shows interpolation chips + grain toggle", () => {
+  it("ResizeToolPage shows interpolation chips + grain toggle inside settings overlay", () => {
     render(
       <MemoryRouter>
         <ResizeToolScreen
@@ -159,8 +159,10 @@ describe("grain + interpolation", () => {
         />
       </MemoryRouter>,
     )
-    expect(screen.getByText("Lanczos (sharp)")).toBeInTheDocument()
-    expect(screen.getByText("Blur (smooth)")).toBeInTheDocument()
+    // chips are inside overlay — open first
+    fireEvent.click(screen.getByLabelText("Resize settings"))
+    expect(screen.getByText("Lanczos")).toBeInTheDocument()
+    expect(screen.getByText("Blur")).toBeInTheDocument()
     expect(screen.getByText("Pixelate")).toBeInTheDocument()
     expect(screen.getByLabelText("Enable grain")).toBeInTheDocument()
     // slider hidden initially
