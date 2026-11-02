@@ -128,7 +128,7 @@ export function Dock({ children, className }: { children: ReactNode; className?:
   )
 }
 
-/* letterboxed hero — blurred cover backdrop + object-contain foreground */
+/* letterboxed hero — pure black, object-contain only */
 export function LetterboxHero({
   src,
   alt,
@@ -144,14 +144,6 @@ export function LetterboxHero({
     <div className={`relative rounded-[18px] overflow-hidden bg-black ${className ?? ""}`}>
       {src ? (
         <>
-          {/* slate underlay keeps dark sources readable instead of black voids */}
-          <div className="absolute inset-0 bg-gradient-to-b from-zinc-700/40 via-zinc-800/30 to-zinc-900/30" />
-          <img
-            src={src}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 h-full w-full object-cover blur-2xl scale-110 opacity-40"
-          />
           <img src={src} alt={alt ?? "preview"} className="absolute inset-0 h-full w-full object-contain" />
         </>
       ) : null}
