@@ -1,100 +1,140 @@
 import type { Op, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
 import { ToolPicker } from "./ToolPicker"
+import { ChromeHeader, BarBtn, PillBtn, Dock } from "./chrome"
+import { Undo2, RotateCcw, Download } from "lucide-react"
 
-// editor home: composed preview as the hero, tools below, export actions.
-// scaling lives only inside the Resize tool — no main-screen Scale button.
 export function EditorScreen({
+  fileName,
   imgEl,
   origSize,
   ops,
   onUndo,
   onReset,
   onDownload,
-  onRemove,
   onOpenTool,
 }: {
+  fileName?: string | null
   imgEl: HTMLImageElement | null
   origSize: Size | null
   ops: Op[]
   onUndo: () => void
   onReset: () => void
   onDownload: () => void
-  onRemove: () => void
   onOpenTool: (tool: "crop" | "resize") => void
 }) {
   const { url, stageSize } = useComposedImage(imgEl, origSize, ops)
   const hasOps = ops.length > 0
 
-  return (
-    <>
-      {/* composed preview */}
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-4 shadow-[0_4px_16px_rgba(0,0,0,0.5),0_1px_3px_rgba(0,0,0,0.4)]">
-        <div className="flex flex-col gap-1">
-          <p className="text-xs font-medium text-zinc-500">Preview</p>
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-lg font-bold text-white">
-              {hasOps ? "Edited preview" : "Preview"}
-            </h2>
-            {origSize && stageSize.w > 0 && (
-              <span className="text-xs text-zinc-400">
-                {stageSize.w} × {stageSize.h} px
-              </span>
-            )}
-          </div>
-        </div>
+  const isLoading = !!fileName && !imgEl
+  const isProcessing = !!imgEl && !!origSize && !url
 
-        <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center shadow-[inset_0_2px_8px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(0,0,0,0.4)]">
-          {url ? (
-            <img
-              src={url}
-              alt={hasOps ? "edited preview" : "original preview"}
-              className="block max-h-[360px] max-w-full object-contain rounded-lg"
-            />
+  return (
+    <div className="flex flex-col min-h-[100dvh] bg-zinc-950">
+      <ChromeHeader wordmark>
+        <BarBtn label="Undo" onClick={onUndo} dim={!hasOps} disabled={!hasOps}>
+          <Undo2 size={18} strokeWidth={1.8} />
+        </BarBtn>
+        <BarBtn label="Reset" onClick={onReset} dim={!hasOps} disabled={!hasOps}>
+          <RotateCcw size={18} strokeWidth={1.8} />
+        </BarBtn>
+        <PillBtn label="Finish — download PNG" onClick={onDownload}>
+          <Download size={17} strokeWidth={1.8} />
+          Finish
+        </PillBtn>
+      </ChromeHeader>
+
+      <div className="flex-1 min-h-0 flex flex-col">
+        {/* letterboxed hero */}
+        <div className="flex-1 min-h-0 px-3 pt-4 flex flex-col">
+          {isLoading ? (
+            <div className="relative flex-1 rounded-[18px] overflow-hidden bg-zinc-900 border border-white/[0.08] flex flex-col items-center justify-center gap-5 min-h-[320px]">
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(90deg, rgba(255,255,255,.04) 25%, rgba(255,255,255,.10) 37%, rgba(255,255,255,.04) 63%)",
+                  backgroundSize: "400px 100%",
+                  animation: "shimmer 1.4s linear infinite",
+                }}
+              />
+              <div
+                className="w-11 h-11 rounded-full border-[3px] border-white/20 border-t-white relative"
+                style={{ animation: "spin .9s linear infinite" }}
+              />
+              <p
+                className="text-[14px] font-medium text-white relative"
+                style={{ animation: "pulse-soft 2.2s ease-in-out infinite" }}
+              >
+                Loading image…
+              </p>
+            </div>
           ) : (
-            <span className="py-10 text-xs text-zinc-500">Rendering…</span>
+            <div className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]">
+              {url ? (
+                <>
+                  {/* slate underlay keeps dark sources readable instead of black voids */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-zinc-700/40 via-zinc-800/30 to-zinc-900/30" />
+                  <img
+                    src={url}
+                    alt=""
+                    aria-hidden
+                    className="absolute inset-0 h-full w-full object-cover blur-2xl scale-110 opacity-40"
+                  />
+                  <img
+                    src={url}
+                    alt={hasOps ? "edited preview" : "original preview"}
+                    className={`absolute inset-0 h-full w-full object-contain ${isProcessing ? "opacity-50 blur-md scale-105" : ""}`}
+                  />
+                </>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs text-zinc-500">Rendering…</span>
+                </div>
+              )}
+              {isProcessing && url && (
+                <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center gap-5">
+                  <div
+                    className="w-11 h-11 rounded-full border-[3px] border-white/20 border-t-white"
+                    style={{ animation: "spin .9s linear infinite" }}
+                  />
+                  <p
+                    className="text-[14px] font-medium text-white"
+                    style={{ animation: "pulse-soft 2.2s ease-in-out infinite" }}
+                  >
+                    Applying changes…
+                  </p>
+                </div>
+              )}
+              {isProcessing && !url && (
+                <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-5">
+                  <div
+                    className="w-11 h-11 rounded-full border-[3px] border-white/20 border-t-white"
+                    style={{ animation: "spin .9s linear infinite" }}
+                  />
+                  <p className="text-[14px] font-medium text-white">Applying changes…</p>
+                </div>
+              )}
+            </div>
           )}
         </div>
-      </section>
 
-      <ToolPicker onSelect={onOpenTool} />
-
-      {/* export + history actions */}
-      <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={onDownload}
-          className="w-full rounded-full bg-white py-3 text-base font-semibold text-black hover:bg-zinc-100 transition-all active:scale-[0.98] shadow-[0_3px_12px_rgba(0,0,0,0.5),0_1px_3px_rgba(0,0,0,0.4)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_2px_rgba(0,0,0,0.2)]"
-        >
-          Download PNG
-        </button>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onUndo}
-            disabled={!hasOps}
-            className="flex-1 rounded-full border border-zinc-700 bg-zinc-800 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-all active:scale-[0.98] shadow-[0_1px_4px_rgba(0,0,0,0.4),0_1px_2px_rgba(0,0,0,0.3)] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] disabled:shadow-none disabled:active:scale-100"
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            onClick={onReset}
-            disabled={!hasOps}
-            className="flex-1 rounded-full border border-zinc-700 bg-zinc-800 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-all active:scale-[0.98] shadow-[0_1px_4px_rgba(0,0,0,0.4),0_1px_2px_rgba(0,0,0,0.3)] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] disabled:shadow-none disabled:active:scale-100"
-          >
-            Reset
-          </button>
-        </div>
+        <p className="text-center text-[11px] text-zinc-500 pt-3.5 pb-1.5 tabular-nums tracking-wide shrink-0">
+          {isLoading && fileName
+            ? fileName
+            : origSize && stageSize.w > 0
+              ? `${stageSize.w} × ${stageSize.h} px`
+              : ""}
+        </p>
       </div>
 
-      <button
-        type="button"
-        onClick={onRemove}
-        className="self-start text-xs font-medium text-zinc-400 underline underline-offset-4 hover:text-zinc-200"
-      >
-        Remove image
-      </button>
-    </>
+      <Dock>
+        <div className={isLoading || isProcessing ? "opacity-30 pointer-events-none" : ""}>
+          <ToolPicker onSelect={onOpenTool} />
+        </div>
+      </Dock>
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}@keyframes pulse-soft{0%,100%{opacity:.55}50%{opacity:1}}`}</style>
+    </div>
   )
 }

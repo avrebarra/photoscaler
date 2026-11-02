@@ -1,23 +1,24 @@
+import { Crop, Scaling } from "lucide-react"
+
 export function ToolPicker({ onSelect }: { onSelect: (tool: "crop" | "resize") => void }) {
   return (
-    <nav className="rounded-2xl border border-zinc-800 bg-zinc-900 p-3 flex flex-col gap-2 shadow-[0_4px_16px_rgba(0,0,0,0.5),0_1px_3px_rgba(0,0,0,0.4)]">
-      <p className="text-xs font-medium text-zinc-500">Tools</p>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => onSelect("crop")}
-          className="flex-1 rounded-full bg-zinc-800 py-3 text-sm font-semibold text-white hover:bg-zinc-700 transition-all active:scale-[0.98] shadow-[0_2px_8px_rgba(0,0,0,0.5),0_1px_2px_rgba(0,0,0,0.4)] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"
-        >
-          Crop
-        </button>
-        <button
-          type="button"
-          onClick={() => onSelect("resize")}
-          className="flex-1 rounded-full bg-zinc-800 py-3 text-sm font-semibold text-white hover:bg-zinc-700 transition-all active:scale-[0.98] shadow-[0_2px_8px_rgba(0,0,0,0.5),0_1px_2px_rgba(0,0,0,0.4)] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"
-        >
-          Resize
-        </button>
-      </div>
-    </nav>
+    <div className="w-fit mx-auto flex items-center gap-3">
+      <button
+        type="button"
+        aria-label="Crop"
+        onClick={() => onSelect("crop")}
+        className="h-12 w-12 rounded-full grid place-items-center bg-white text-black transition active:scale-95"
+      >
+        <Crop size={20} strokeWidth={1.8} />
+      </button>
+      <button
+        type="button"
+        aria-label="Resize"
+        onClick={() => onSelect("resize")}
+        className="h-12 w-12 rounded-full grid place-items-center bg-white/10 text-zinc-300 transition hover:bg-white/15 active:scale-95"
+      >
+        <Scaling size={20} strokeWidth={1.8} />
+      </button>
+    </div>
   )
 }

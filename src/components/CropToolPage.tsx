@@ -9,8 +9,7 @@ import {
 } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
 import { CropOverlay } from "./CropOverlay"
-import { Chip } from "./ui"
-import { ToolPage } from "./ToolPage"
+import { ToolPage, ToolDock } from "./ToolPage"
 
 const ASPECTS: { label: string; value: CropAspect }[] = [
   { label: "Free", value: "free" },
@@ -41,15 +40,9 @@ export function CropToolPage({
   // (first mount, or returning after another tool applied an op)
   useEffect(() => {
     if (!origSize || stageSize.w < 1) return
-    // keep existing draft on aspect switches; only reseed on stage growth
-    // or first mount. simplest: reseed when draft is null or stage changed
-    // substantially — for now reseed on every stageSize change, preserving
-    // aspect via conform. user can immediately drag anyway.
     setDraft((prev) => {
       if (prev && prev.width > 0 && stageSize.w === prev.width + prev.height) return prev
-      // if already seeded and stage hasn't meaningfully changed, keep it
       if (prev && stageSize.w > 0) {
-        // stageSize is the new base for crops; keep prev only if it still fits
         if (prev.x + prev.width <= stageSize.w && prev.y + prev.height <= stageSize.h) return prev
       }
       return defaultCropRect(stageSize)
@@ -75,44 +68,60 @@ export function CropToolPage({
 
   return (
     <ToolPage title="Crop" backHref="/editor" onApply={handleApply} applyDisabled={!draft}>
-      <div className="flex flex-col gap-3">
-        <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center shadow-[inset_0_2px_8px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(0,0,0,0.4)]">
-          <div className="relative inline-block">
-            {url && stageSize.w > 0 && draft ? (
-              <>
-                <img
-                  src={url}
-                  alt="crop canvas"
-                  className="block max-h-[360px] max-w-full object-contain rounded-lg"
-                />
-                <CropOverlay
-                  naturalSize={stageSize}
-                  rect={draft}
-                  aspect={aspect}
-                  onRectChange={setDraft}
-                  onAspectChange={() => {}}
-                />
-              </>
-            ) : (
-              <span className="py-10 text-xs text-zinc-500">Rendering…</span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium text-zinc-500">Crop aspect</span>
-          <div className="flex flex-wrap gap-2">
-            {ASPECTS.map((p) => (
-              <Chip key={p.value} active={aspect === p.value} onClick={() => handleAspect(p.value)}>
-                {p.label}
-              </Chip>
-            ))}
-          </div>
-          <p className="text-xs text-zinc-500">
-            Drag to move, handles to resize. {aspect !== "free" ? "Ratio locked." : "Free ratio."}
-          </p>
+      {/* hero — letterboxed: blurred cover backdrop + object-contain foreground, overlay percent-based */}
+      <div className="flex-1 min-h-0 flex flex-col px-3 pt-4">
+        <div className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]">
+          {url && stageSize.w > 0 && draft ? (
+            <>
+              {/* slate underlay keeps dark sources readable instead of black voids */}
+              <div className="absolute inset-0 bg-gradient-to-b from-zinc-700/40 via-zinc-800/30 to-zinc-900/30" />
+              <img
+                src={url}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-cover blur-2xl scale-110 opacity-40"
+              />
+              <img
+                src={url}
+                alt="crop canvas"
+                className="absolute inset-0 h-full w-full object-contain"
+              />
+              <CropOverlay
+                naturalSize={stageSize}
+                rect={draft}
+                aspect={aspect}
+                onRectChange={setDraft}
+                onAspectChange={() => {}}
+              />
+            </>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs text-zinc-500">Rendering…</span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* dock — horizontal centered chips, mockup parity; hint copy kept below row in small text */}
+      <ToolDock>
+        <div className="flex gap-2 justify-between">
+          {ASPECTS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => handleAspect(p.value)}
+              className={`flex-1 h-11 rounded-full text-[13px] font-medium transition active:scale-[0.98] ${
+                aspect === p.value ? "bg-white text-black" : "bg-white/10 text-zinc-300"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-zinc-500 px-1">
+          Drag to move, handles to resize. {aspect !== "free" ? "Ratio locked." : "Free ratio."}
+        </p>
+      </ToolDock>
     </ToolPage>
   )
 }
