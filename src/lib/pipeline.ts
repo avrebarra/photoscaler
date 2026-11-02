@@ -1,11 +1,12 @@
 // pure Canvas op-stack compose engine — no React
 import type { CropRect, CropAspect } from "./crop"
 import type { ScaleMode } from "./scale"
+import { applyNoise } from "./scale"
 
 // ops are anchored: a crop's rect is in absolute pixels of its base (the
 // composite of all prior ops); resize is relative, so it needs no base coords.
 export type CropOp = { type: "crop"; rect: CropRect; aspect: CropAspect }
-export type ResizeOp = { type: "resize"; percent: number; mode: ScaleMode }
+export type ResizeOp = { type: "resize"; percent: number; mode: ScaleMode; noiseStrength?: number }
 export type Op = CropOp | ResizeOp
 
 export type Size = { w: number; h: number }
@@ -131,16 +132,34 @@ export function compose(base: ComposeSource, origSize: Size, ops: Op[], scale: n
         ctx.drawImage(source, srcRect.x, srcRect.y, srcRect.width, srcRect.height, 0, 0, srcRect.width, srcRect.height)
       }
     } else {
+      // validate resize op
+      if (!Number.isFinite(op.percent) || op.percent < 10) {
+        throw new Error("Invalid percent: must be >= 10")
+      }
+      if (op.mode === "noise") {
+        const ns = op.noiseStrength ?? 35
+        if (!Number.isFinite(ns) || ns < 0 || ns > 100) throw new Error("Invalid noiseStrength")
+      }
       const rs = op.percent / 100
       const w = Math.max(1, Math.round(cur.w * rs))
       const h = Math.max(1, Math.round(cur.h * rs))
       next = { w, h }
-      const smooth = op.mode === "smooth"
+      const smooth = op.mode === "smooth" || op.mode === "noise"
+      const mode = op.mode
+      const noiseStrength = op.mode === "noise" ? (op.noiseStrength ?? 35) : 0
       draw = (ctx, dw, dh) => {
         ctx.imageSmoothingEnabled = smooth
-        // @ts-ignore - quality is optional but nice for smooth mode
+        // @ts-ignore - quality is optional but nice for smooth/noise mode
         if (smooth) ctx.imageSmoothingQuality = "high"
         ctx.drawImage(source, 0, 0, cur.w, cur.h, 0, 0, dw, dh)
+        // post-scale grain pass for noise mode — applied on the drawn canvas
+        // via ImageData so it rides the composed pixels
+        if (mode === "noise") {
+          // we need the canvas; ctx.canvas is the target canvas
+          const canvas = ctx.canvas as HTMLCanvasElement
+          const strength = Math.max(0, Math.min(100, noiseStrength))
+          if (strength > 0) applyNoise(canvas, strength)
+        }
       }
     }
 

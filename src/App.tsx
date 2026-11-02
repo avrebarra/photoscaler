@@ -56,7 +56,9 @@ export default function App() {
       const a = document.createElement("a")
       const base = file.name.replace(/\.[^.]+$/, "") || "image"
       a.href = url
-      a.download = `${base}${ops.length ? "-edited" : ""}.png`
+      const hasNoise = ops.some((o) => o.type === "resize" && o.mode === "noise")
+      const suffix = hasNoise ? "-noise" : ops.length ? "-edited" : ""
+      a.download = `${base}${suffix}.png`
       a.click()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))

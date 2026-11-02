@@ -15,6 +15,11 @@ function clampPercent(raw: number, origW: number | null): number {
   return Math.min(upper, Math.max(10, raw))
 }
 
+function clampNoiseStrength(v: number): number {
+  if (!Number.isFinite(v)) return 35
+  return Math.max(0, Math.min(100, Math.round(v)))
+}
+
 // resize tool: scales the composed stage. draft is local — Back drops it,
 // Apply appends a resize op. preserves GW2JJ7P editable width binding.
 export function ResizeToolPage({
@@ -30,8 +35,15 @@ export function ResizeToolPage({
 }) {
   const [percent, setPercent] = useState(100)
   const [mode, setMode] = useState<ScaleMode>("smooth")
+  const [noiseStrength, setNoiseStrength] = useState(35)
 
-  const draftOps = useMemo<Op[]>(() => [...baseOps, { type: "resize", percent, mode }], [baseOps, percent, mode])
+  const draftOps = useMemo<Op[]>(() => {
+    const op: ResizeOp =
+      mode === "noise"
+        ? { type: "resize", percent, mode, noiseStrength }
+        : { type: "resize", percent, mode }
+    return [...baseOps, op]
+  }, [baseOps, percent, mode, noiseStrength])
   const { url, stageSize: outSize } = useComposedImage(imgEl, origSize, draftOps)
 
   // effective orig for clamp is the stage size before this draft's resize?
@@ -79,7 +91,11 @@ export function ResizeToolPage({
   }
 
   function handleApply() {
-    onApply({ type: "resize", percent, mode })
+    if (mode === "noise") {
+      onApply({ type: "resize", percent, mode, noiseStrength: clampNoiseStrength(noiseStrength) })
+    } else {
+      onApply({ type: "resize", percent, mode })
+    }
   }
 
   return (
@@ -159,11 +175,52 @@ export function ResizeToolPage({
             <Chip active={mode === "pixelate"} onClick={() => setMode("pixelate")}>
               Pixelate (sharp)
             </Chip>
+            <Chip active={mode === "noise"} onClick={() => setMode("noise")}>
+              Noise (grain)
+            </Chip>
           </div>
           <p className="text-xs text-zinc-500">
-            {mode === "smooth" ? "Bilinear-like · good for photos" : "Nearest-neighbor · keeps hard pixels"}
+            {mode === "smooth"
+              ? "Bilinear-like · good for photos"
+              : mode === "pixelate"
+                ? "Nearest-neighbor · keeps hard pixels"
+                : "Smooth scale + old-photo grain · strength controls intensity"}
           </p>
         </div>
+
+        {mode === "noise" && (
+          <div className="flex flex-col gap-2 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-zinc-500">Grain strength</span>
+              <span className="text-xs text-zinc-400">{noiseStrength}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                aria-label="Grain strength"
+                min={0}
+                max={100}
+                step={1}
+                value={noiseStrength}
+                onChange={(e) => setNoiseStrength(clampNoiseStrength(Number(e.target.value)))}
+                className="flex-1 accent-white"
+              />
+              <input
+                type="number"
+                aria-label="Grain strength value"
+                min={0}
+                max={100}
+                value={noiseStrength}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  if (!Number.isFinite(v)) return
+                  setNoiseStrength(clampNoiseStrength(v))
+                }}
+                className="w-20 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </ToolPage>
   )
