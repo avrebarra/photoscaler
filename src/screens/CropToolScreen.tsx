@@ -41,13 +41,12 @@ export function CropToolScreen({
   useEffect(() => {
     if (!origSize || stageSize.w < 1) return
     setDraft((prev) => {
-      if (prev && prev.width > 0 && stageSize.w === prev.width + prev.height) return prev
-      if (prev && stageSize.w > 0) {
-        if (prev.x + prev.width <= stageSize.w && prev.y + prev.height <= stageSize.h) return prev
+      if (prev && prev.x + prev.width <= stageSize.w && prev.y + prev.height <= stageSize.h) {
+        return prev
       }
       return defaultCropRect(stageSize)
     })
-  }, [origSize, stageSize])
+  }, [origSize, stageSize.w, stageSize.h])
 
   function handleAspect(a: CropAspect) {
     setAspect(a)

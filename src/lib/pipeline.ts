@@ -1,5 +1,6 @@
 // pure Canvas op-stack compose engine — no React
-import type { CropRect, CropAspect } from "./crop"
+import { type CropRect, type CropAspect, ratioForAspect } from "./crop"
+export { ratioForAspect }
 import type { ScaleMode } from "./scale"
 import { applyNoise } from "./scale"
 
@@ -49,24 +50,6 @@ export function defaultCropRect(size: Size): CropRect {
   }
 }
 
-// ratio for an aspect chip, relative to the stage size
-export function ratioForAspect(aspect: CropAspect, size: Size): number | null {
-  switch (aspect) {
-    case "1:1":
-      return 1
-    case "4:3":
-      return 4 / 3
-    case "16:9":
-      return 16 / 9
-    case "original":
-      return size.w / size.h
-    default:
-      return null
-  }
-}
-
-// adjust a rect to an aspect ratio around its center — the single copy of the
-// aspect-fit logic (previously duplicated in App/PreviewPanel/CropToolPage)
 export function conformRectToAspect(rect: CropRect, aspect: CropAspect, size: Size): CropRect {
   const ratio = ratioForAspect(aspect, size)
   if (ratio === null) return rect

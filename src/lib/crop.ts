@@ -3,6 +3,33 @@
 export type CropRect = { x: number; y: number; width: number; height: number } // pixels in natural image coords
 export type CropAspect = "free" | "1:1" | "4:3" | "16:9" | "original"
 
+export type ContainRect = { x: number; y: number; w: number; h: number; scale: number }
+
+export function ratioForAspect(aspect: CropAspect, size: { w: number; h: number }): number | null {
+  switch (aspect) {
+    case "1:1":
+      return 1
+    case "4:3":
+      return 4 / 3
+    case "16:9":
+      return 16 / 9
+    case "original":
+      return size.w / size.h
+    default:
+      return null
+  }
+}
+
+export function containRect(container: { w: number; h: number }, natural: { w: number; h: number }): ContainRect {
+  if (container.w <= 0 || container.h <= 0 || natural.w <= 0 || natural.h <= 0) {
+    return { x: 0, y: 0, w: container.w, h: container.h, scale: 1 }
+  }
+  const scale = Math.min(container.w / natural.w, container.h / natural.h)
+  const w = natural.w * scale
+  const h = natural.h * scale
+  return { x: (container.w - w) / 2, y: (container.h - h) / 2, w, h, scale }
+}
+
 const MAX_SIDE = 8000
 
 export function normalizeRect(rect: CropRect, naturalSize: { w: number; h: number }): CropRect {
