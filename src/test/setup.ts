@@ -124,6 +124,26 @@ if (origWidthDesc && origHeightDesc) {
   // simpler: monkey-patch createElement to hook width setter — but WeakMap lazy handles it
 }
 
+// mock toDataURL — jsdom has no real canvas impl (throws Not implemented)
+{
+  const orig = HTMLCanvasElement.prototype.toDataURL as unknown as (...a: unknown[]) => string
+  // @ts-ignore
+  HTMLCanvasElement.prototype.toDataURL = function (this: HTMLCanvasElement, ...args: unknown[]) {
+    try {
+      return (orig as unknown as (this: HTMLCanvasElement, ...a: unknown[]) => string).apply(this, args as never)
+    } catch {
+      const type = (args[0] as string) || "image/png"
+      return `data:${type};base64,mock-${this.width}x${this.height}`
+    }
+  }
+}
+if (!HTMLCanvasElement.prototype.toBlob) {
+  // @ts-ignore
+  HTMLCanvasElement.prototype.toBlob = function (cb: (b: Blob | null) => void) {
+    cb(new Blob(["mock"], { type: "image/png" }))
+  }
+}
+
 // mock URL.createObjectURL
 if (!URL.createObjectURL) {
   // @ts-ignore

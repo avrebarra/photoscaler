@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from "react"
-import { compose, stageSize, type Op, type Size } from "../lib/pipeline"
+import { compose, previewScale, stageSize, type Op, type Size } from "../lib/pipeline"
 import { canvasToUrl } from "../lib/scale"
 
 // live compose: walks the op list and hands back a data URL plus the
-// full-res stage size (what the next op anchors to). preview is full-res
-// composed then displayed CSS-constrained — avoids the canvas-as-Blob bug
-// and keeps correctness simple. display-res downscale can be added later
-// as an optimization; getting the image on screen comes first.
+// full-res stage size (what the next op anchors to). preview composes at
+// display resolution (previewScale) so slider scrub stays at ~60fps even
+// for 4000px photos — full-res (scale=1) is only for Download/Apply.
 export function useComposedImage(
   base: HTMLImageElement | HTMLCanvasElement | null,
   origSize: Size | null,
   ops: Op[],
-  debounceMs = 80,
+  debounceMs = 50,
 ): { url: string | null; stageSize: Size } {
   const [url, setUrl] = useState<string | null>(null)
   const prevUrl = useRef<string | null>(null)
@@ -30,10 +29,21 @@ export function useComposedImage(
     let cancelled = false
     const timer = setTimeout(() => {
       try {
-        // full-res compose; CSS constrains the <img> to 360px so no OOM
-        // worry for preview — the real cost is Download which also does 1.
-        const result = compose(base, origSize, ops, 1)
-        const dataUrl = canvasToUrl(result.canvas, "png")
+        // preview scale: fit long side to ~900px (2× container width for
+        // retina) — cuts pixels ~10-20× for large photos, makes
+        // toDataURL + grain + lanczos cheap. CSS object-contain handles
+        // actual display size; Download path still uses scale=1.
+        const finalStage = stageSize(origSize, ops)
+        const s = previewScale(finalStage, 900)
+        const result = compose(base, origSize, ops, s)
+        // jpeg encodes much faster and is smaller than png at preview size;
+        // alpha is not needed for photo preview (canvas is opaque after draw).
+        let dataUrl: string
+        try {
+          dataUrl = canvasToUrl(result.canvas, "jpeg")
+        } catch {
+          dataUrl = canvasToUrl(result.canvas, "png")
+        }
         if (!cancelled) {
           prevUrl.current = dataUrl
           setUrl(dataUrl)

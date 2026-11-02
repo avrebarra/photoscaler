@@ -271,7 +271,10 @@ export function compose(base: ComposeSource, origSize: Size, ops: Op[], scale: n
       const h = Math.max(1, Math.round(cur.h * rs))
       next = { w, h }
       const smooth = mode === "smooth"
-      const isLanczos = mode === "lanczos"
+      // lanczos JS resample is ~10-50× slower than GPU drawImage — only use
+      // it for full-res export (scale===1). preview (scale<1) falls back to
+      // high-quality smooth so slider stays responsive.
+      const isLanczos = mode === "lanczos" && scale === 1
       const grainStrength = grain
       draw = (ctx, dw, dh) => {
         if (isLanczos) {
