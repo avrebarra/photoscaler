@@ -165,8 +165,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-
-      <p className="w-full max-w-md mx-auto text-center text-xs text-zinc-500 py-4 px-6">All processing is local — image never leaves your browser.</p>
     </div>
   )
 }
