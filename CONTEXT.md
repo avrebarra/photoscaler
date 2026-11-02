@@ -42,4 +42,13 @@ Mobile-first chrome redesign of photoscaler. Home becomes a full-height hero scr
 - **App redirect gate:** Changed the `/editor*` guard from `!src` to `!file` so the loading skeleton (file set, `src` still pending, `imgEl` null) renders inside `/editor` instead of bouncing to `/`. Semantically identical once the object URL is created (same tick), but avoids a one-frame redirect flicker.
 
 ## Status
-Done — chrome composition implemented, build + tests green, ready for hub store
+Done — chrome composition implemented, build + tests green, ready for hub store.
+
+## Review notes
+- User manual walk flagged 4 mockup divergences; fixed in review-fix pass (all style-only):
+  1. Home: card now mid-floor per mockup (title cluster at ~31vh top-center, card h~35vh with 12vh gap above home indicator) — was bottom-pinned.
+  2. Blue focus ring stripped from Choose image + all PillBtns (focus:outline-none + subtle white focus-visible ring for keyboard a11y).
+  3. Letterbox hero dark-source fallback: slate gradient underlay behind blurred backdrop on Editor/Crop/Resize heroes — black voids/notches gone. Processing foreground now mockup blur-md/50% treatment.
+  4. Segmented Crop|Resize control was stretched edge-to-edge — `mx-auto` can't shrink a stretched item; added `w-fit` → compact centered per mockup (measured 178px at 393px viewport).
+  5. Header wordmark big → text-[26px] per mockup (was 19px, a real bug in the original port).
+- Verified by headless Chrome at 393×852 mobile emulation (fresh profile, dark-image worst case): home/editor/crop/resize/processing all walk green. Visual note: Resize dock is denser than mockup because width/interpolation/noise controls live there (mockup omits them — 5V41C1M territory, untouched).

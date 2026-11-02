@@ -8,7 +8,7 @@ export { Check, ArrowLeft, Undo2, RotateCcw, Download }
 export function Wordmark({ big }: { big?: boolean }) {
   return (
     <span
-      className={`font-bold tracking-[-.02em] leading-none text-white ${big ? "text-[19px]" : "text-[19px]"}`}
+      className={`font-bold tracking-[-.02em] leading-none text-white ${big ? "text-[26px]" : "text-[19px]"}`}
     >
       Photoscaler
     </span>
@@ -110,7 +110,7 @@ export function PillBtn({
       aria-label={label}
       onClick={onClick}
       disabled={disabled}
-      className="h-10 pl-2.5 pr-3.5 rounded-full bg-white text-black font-semibold text-[14px] flex items-center gap-1.5 active:scale-[0.98] transition shadow-[0_2px_10px_rgba(0,0,0,.35)] disabled:opacity-40 disabled:active:scale-100 shrink-0"
+      className="h-10 pl-2.5 pr-3.5 rounded-full bg-white text-black font-semibold text-[14px] flex items-center gap-1.5 active:scale-[0.98] transition shadow-[0_2px_10px_rgba(0,0,0,.35)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-40 disabled:active:scale-100 shrink-0"
     >
       {children}
     </button>
@@ -145,6 +145,8 @@ export function LetterboxHero({
     <div className={`relative rounded-[18px] overflow-hidden bg-black ${className ?? ""}`}>
       {src ? (
         <>
+          {/* slate underlay keeps dark sources readable instead of black voids */}
+          <div className="absolute inset-0 bg-gradient-to-b from-zinc-700/40 via-zinc-800/30 to-zinc-900/30" />
           <img
             src={src}
             alt=""

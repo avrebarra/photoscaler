@@ -73,6 +73,8 @@ export function EditorScreen({
             <div className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]">
               {url ? (
                 <>
+                  {/* slate underlay keeps dark sources readable instead of black voids */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-zinc-700/40 via-zinc-800/30 to-zinc-900/30" />
                   <img
                     src={url}
                     alt=""
@@ -82,7 +84,7 @@ export function EditorScreen({
                   <img
                     src={url}
                     alt={hasOps ? "edited preview" : "original preview"}
-                    className={`absolute inset-0 h-full w-full object-contain ${isProcessing ? "opacity-50 blur-[2px]" : ""}`}
+                    className={`absolute inset-0 h-full w-full object-contain ${isProcessing ? "opacity-50 blur-md scale-105" : ""}`}
                   />
                 </>
               ) : (

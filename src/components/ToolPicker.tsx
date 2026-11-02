@@ -2,7 +2,7 @@ import { Crop, Scaling } from "lucide-react"
 
 export function ToolPicker({ onSelect }: { onSelect: (tool: "crop" | "resize") => void }) {
   return (
-    <div className="mx-auto flex items-center gap-1 rounded-full bg-white/10 p-1">
+    <div className="w-fit mx-auto flex items-center gap-1 rounded-full bg-white/10 p-1">
       <button
         type="button"
         aria-label="Crop"
