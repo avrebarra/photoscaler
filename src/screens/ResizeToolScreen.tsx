@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Settings, X } from "lucide-react"
 import type { ScaleMode } from "../lib/scale"
 import type { Op, ResizeOp, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
+import { usePinchZoom } from "../hooks/usePinchZoom"
 import { Chip } from "../components/ui"
 import { ToolPage, ToolDock } from "../components/ToolPage"
 import { TickDial } from "../components/TickDial"
@@ -27,6 +28,13 @@ export function ResizeToolScreen({ imgEl, origSize, baseOps, onApply }: ResizeTo
 
   const { url } = useComposedImage(imgEl, origSize, draftOps)
 
+  const previewRef = useRef<HTMLDivElement>(null)
+  const { scale, tx, ty, reset, bind } = usePinchZoom(previewRef)
+
+  useEffect(() => {
+    reset()
+  }, [url, reset])
+
   const minPercent = (() => {
     if (!origSize || origSize.w <= 0 || origSize.h <= 0) return 10
     return Math.max(1, Math.ceil((10 / Math.min(origSize.w, origSize.h)) * 100))
@@ -50,11 +58,20 @@ export function ResizeToolScreen({ imgEl, origSize, baseOps, onApply }: ResizeTo
   return (
     <ToolPage title="Resize" backHref="/editor" onApply={handleApply}>
       <div className="flex-1 min-h-0 flex flex-col px-3 pt-4">
-        <div className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]">
+        <div
+          ref={previewRef}
+          {...(bind() as object)}
+          style={{ touchAction: "none" }}
+          className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]"
+        >
           {url ? (
             <img
               src={url}
               alt="resize canvas"
+              style={{
+                transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
+                transformOrigin: "center center",
+              }}
               className="absolute inset-0 h-full w-full object-contain"
             />
           ) : (

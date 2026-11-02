@@ -1,5 +1,7 @@
+import { useEffect, useRef } from "react"
 import type { Op, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
+import { usePinchZoom } from "../hooks/usePinchZoom"
 import { ToolPicker } from "../components/ToolPicker"
 import { ChromeHeader, BarBtn, PillBtn, Dock } from "../components/chrome"
 import { Undo2, Download } from "lucide-react"
@@ -18,6 +20,14 @@ export function EditorScreen({
 
   const isLoading = !!fileName && !imgEl
   const isProcessing = !!imgEl && !!origSize && !url
+
+  const previewRef = useRef<HTMLDivElement>(null)
+  const { scale, tx, ty, reset, bind } = usePinchZoom(previewRef)
+
+  // reset zoom when preview image changes
+  useEffect(() => {
+    reset()
+  }, [url, reset])
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-zinc-950">
@@ -56,13 +66,22 @@ export function EditorScreen({
               </p>
             </div>
           ) : (
-            <div className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]">
+            <div
+              ref={previewRef}
+              {...(bind() as object)}
+              style={{ touchAction: "none" }}
+              className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]"
+            >
               {url ? (
                 <>
                   <img
                     src={url}
                     alt={hasOps ? "edited preview" : "original preview"}
-                    className={`absolute inset-0 h-full w-full object-contain ${isProcessing ? "opacity-50 blur-md scale-105" : ""}`}
+                    style={{
+                      transform: `translate(${tx}px, ${ty}px) scale(${isProcessing ? scale * 1.05 : scale})`,
+                      transformOrigin: "center center",
+                    }}
+                    className={`absolute inset-0 h-full w-full object-contain ${isProcessing ? "opacity-50 blur-md" : ""}`}
                   />
                 </>
               ) : (
