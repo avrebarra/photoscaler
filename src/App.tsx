@@ -200,19 +200,6 @@ export default function App() {
           onRemove={() => setFile(null)}
         />
 
-        <OptionsPanel
-          percent={percent}
-          onPercent={setPercent}
-          mode={mode}
-          onMode={setMode}
-          origSize={
-            cropRect ? { w: Math.round(cropRect.width), h: Math.round(cropRect.height) } : origSize
-          }
-          error={error}
-          onScale={handleScale}
-          disabled={!src}
-        />
-
         <PreviewPanel
           src={src}
           outUrl={outUrl}
@@ -231,6 +218,19 @@ export default function App() {
           onCropAspectChange={handleCropAspectChange}
           onCropReset={handleCropReset}
           onCropError={setError}
+        />
+
+        <OptionsPanel
+          percent={percent}
+          onPercent={setPercent}
+          mode={mode}
+          onMode={setMode}
+          origSize={
+            cropRect ? { w: Math.round(cropRect.width), h: Math.round(cropRect.height) } : origSize
+          }
+          error={error}
+          onScale={handleScale}
+          disabled={!src}
         />
 
         <p className="text-center text-xs text-zinc-500">
