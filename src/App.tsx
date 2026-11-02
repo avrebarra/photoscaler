@@ -122,7 +122,6 @@ export default function App() {
                   origSize={origSize}
                   ops={ops}
                   onUndo={() => setOps((prev) => prev.slice(0, -1))}
-                  onReset={() => setOps([])}
                   onDownload={handleDownload}
                   onOpenTool={(tool) =>
                     navigate(tool === "crop" ? "/editor/crop" : "/editor/resize")

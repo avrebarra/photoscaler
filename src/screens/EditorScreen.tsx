@@ -2,7 +2,7 @@ import type { Op, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
 import { ToolPicker } from "../components/ToolPicker"
 import { ChromeHeader, BarBtn, PillBtn, Dock } from "../components/chrome"
-import { Undo2, RotateCcw, Download } from "lucide-react"
+import { Undo2, Download } from "lucide-react"
 
 export function EditorScreen({
   fileName,
@@ -10,7 +10,6 @@ export function EditorScreen({
   origSize,
   ops,
   onUndo,
-  onReset,
   onDownload,
   onOpenTool,
 }: {
@@ -19,7 +18,6 @@ export function EditorScreen({
   origSize: Size | null
   ops: Op[]
   onUndo: () => void
-  onReset: () => void
   onDownload: () => void
   onOpenTool: (tool: "crop" | "resize") => void
 }) {
@@ -34,9 +32,6 @@ export function EditorScreen({
       <ChromeHeader wordmark>
         <BarBtn label="Undo" onClick={onUndo} dim={!hasOps} disabled={!hasOps}>
           <Undo2 size={18} strokeWidth={1.8} />
-        </BarBtn>
-        <BarBtn label="Reset" onClick={onReset} dim={!hasOps} disabled={!hasOps}>
-          <RotateCcw size={18} strokeWidth={1.8} />
         </BarBtn>
         <PillBtn label="Finish — download PNG" onClick={onDownload}>
           <Download size={17} strokeWidth={1.8} />
