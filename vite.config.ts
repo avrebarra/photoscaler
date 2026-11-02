@@ -26,6 +26,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png}"],
+        navigateFallbackDenylist: [/^\/manifest\.webmanifest$/],
+      },
+      devOptions: {
+        enabled: true,
       },
     }),
   ],
