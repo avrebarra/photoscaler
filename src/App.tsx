@@ -1,51 +1,34 @@
-import { useEffect, useRef, useState } from "react"
-import { Routes, Route, useNavigate, Navigate } from "react-router-dom"
-import { canvasToUrl, scaleImage, type ScaleMode } from "./lib/scale"
-import { cropImage, normalizeRect, type CropAspect, type CropRect } from "./lib/crop"
+import { useEffect, useState } from "react"
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom"
+import { canvasToUrl } from "./lib/scale"
+import { compose, type CropOp, type Op, type ResizeOp, type Size } from "./lib/pipeline"
 import { DropZone } from "./components/DropZone"
-import { ToolPicker } from "./components/ToolPicker"
+import { EditorScreen } from "./components/EditorScreen"
 import { CropToolPage } from "./components/CropToolPage"
 import { ResizeToolPage } from "./components/ResizeToolPage"
 
 export default function App() {
-  // input
   const [file, setFile] = useState<File | null>(null)
   const [src, setSrc] = useState<string | null>(null)
-  const [origSize, setOrigSize] = useState<{ w: number; h: number } | null>(null)
-
-  // options
-  const [percent, setPercent] = useState(200)
-  const [mode, setMode] = useState<ScaleMode>("smooth")
-
-  // result
-  const [outUrl, setOutUrl] = useState<string | null>(null)
-  const [outSize, setOutSize] = useState<{ w: number; h: number } | null>(null)
+  const [origSize, setOrigSize] = useState<Size | null>(null)
+  const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null)
+  const [ops, setOps] = useState<Op[]>([])
   const [error, setError] = useState<string | null>(null)
-
-  // crop — before scale
-  const [cropRect, setCropRect] = useState<CropRect | null>(null)
-  const [cropAspect, setCropAspect] = useState<CropAspect>("free")
-
-  const imgRef = useRef<HTMLImageElement>(null)
   const navigate = useNavigate()
 
-  // create object url when file picked
+  // object URL lifecycle + full state reset when the file leaves
   useEffect(() => {
     if (!file) {
       setSrc(null)
       setOrigSize(null)
-      setOutUrl(null)
-      setOutSize(null)
-      setCropRect(null)
-      setCropAspect("free")
+      setImgEl(null)
+      setOps([])
+      setError(null)
       return
     }
     const url = URL.createObjectURL(file)
     setSrc(url)
-    setOutUrl(null)
-    setOutSize(null)
-    setCropRect(null)
-    setCropAspect("free")
+    setOps([])
     setError(null)
     return () => URL.revokeObjectURL(url)
   }, [file])
@@ -60,171 +43,65 @@ export default function App() {
     navigate("/editor")
   }
 
-  function handleScale() {
-    if (!imgRef.current || !imgRef.current.complete) {
-      setError("Image not loaded yet")
-      return
-    }
-    try {
-      setError(null)
-      const MAX_SIDE = 8000
-      let source: HTMLImageElement | HTMLCanvasElement = imgRef.current
-      let sourceW = imgRef.current.naturalWidth
-      let sourceH = imgRef.current.naturalHeight
-
-      // crop before scale
-      if (cropRect && origSize) {
-        const normalized = normalizeRect(cropRect, origSize)
-        const cropped = cropImage(imgRef.current, normalized)
-        if (cropped.width > MAX_SIDE || cropped.height > MAX_SIDE) {
-          throw new Error(`Output too large: ${cropped.width}×${cropped.height} (max ${MAX_SIDE}px side)`)
-        }
-        source = cropped.canvas
-        sourceW = cropped.width
-        sourceH = cropped.height
-      }
-
-      let canvas: HTMLCanvasElement
-      let width: number
-      let height: number
-
-      if (source instanceof HTMLCanvasElement) {
-        const scale = percent / 100
-        width = Math.max(1, Math.round(sourceW * scale))
-        height = Math.max(1, Math.round(sourceH * scale))
-        if (width > MAX_SIDE || height > MAX_SIDE) {
-          throw new Error(`Output too large: ${width}×${height} (max ${MAX_SIDE}px side)`)
-        }
-        canvas = document.createElement("canvas")
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext("2d")
-        if (!ctx) throw new Error("Canvas not supported")
-        ctx.imageSmoothingEnabled = mode === "smooth"
-        // @ts-ignore
-        if (mode === "smooth") ctx.imageSmoothingQuality = "high"
-        ctx.drawImage(source, 0, 0, width, height)
-      } else {
-        const res = scaleImage(source, percent, mode)
-        canvas = res.canvas
-        width = res.width
-        height = res.height
-      }
-
-      setOutUrl(canvasToUrl(canvas, "png"))
-      setOutSize({ w: width, h: height })
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e))
-    }
+  function applyOp(op: CropOp | ResizeOp) {
+    setOps((prev) => [...prev, op])
+    navigate("/editor")
   }
 
   function handleDownload() {
-    if (!outUrl) return
-    const a = document.createElement("a")
-    const base = file?.name.replace(/\.[^.]+$/, "") || "image"
-    a.href = outUrl
-    const cropSuffix = cropRect ? "-crop" : ""
-    a.download = `${base}${cropSuffix}-${percent}pct-${mode}.png`
-    a.click()
-  }
-
-  function handleCropAspectChange(aspect: CropAspect) {
-    setCropAspect(aspect)
-    if (!cropRect || !origSize) return
-    if (aspect === "free") return
+    if (!imgEl || !origSize || !file) return
     try {
-      let ratio: number
-      if (aspect === "1:1") ratio = 1
-      else if (aspect === "4:3") ratio = 4 / 3
-      else if (aspect === "16:9") ratio = 16 / 9
-      else ratio = origSize.w / origSize.h
-      const cx = cropRect.x + cropRect.width / 2
-      const cy = cropRect.y + cropRect.height / 2
-      let newW = cropRect.width
-      let newH = cropRect.height
-      const currentRatio = newW / newH
-      if (Math.abs(currentRatio - ratio) < 0.01) return
-      if (currentRatio > ratio) {
-        newW = newH * ratio
-      } else {
-        newH = newW / ratio
-      }
-      newW = Math.min(newW, origSize.w)
-      newH = Math.min(newH, origSize.h)
-      if (newW < 1) newW = 1
-      if (newH < 1) newH = 1
-      let nx = cx - newW / 2
-      let ny = cy - newH / 2
-      nx = Math.max(0, Math.min(nx, origSize.w - newW))
-      ny = Math.max(0, Math.min(ny, origSize.h - newH))
-      const next = normalizeRect({ x: nx, y: ny, width: newW, height: newH }, origSize)
-      setCropRect(next)
+      const result = compose(imgEl, origSize, ops, 1)
+      const url = canvasToUrl(result.canvas, "png")
+      const a = document.createElement("a")
+      const base = file.name.replace(/\.[^.]+$/, "") || "image"
+      a.href = url
+      a.download = `${base}${ops.length ? "-edited" : ""}.png`
+      a.click()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
     }
   }
 
-  function handleCropReset() {
-    setCropRect(null)
-    setCropAspect("free")
-    setOutUrl(null)
-    setOutSize(null)
-    setError(null)
-  }
-
-  // derived origSize for resize page: crop rect size if cropped else origSize
-  const effectiveOrigSize = cropRect
-    ? { w: Math.round(cropRect.width), h: Math.round(cropRect.height) }
-    : origSize
-
-  // clamp helper — silent clamp to 8000px max side, lower bound 10
-  const MAX_SIDE_CLAMP = 8000
-  function clampPercentForWidth(raw: number, w: number | null): number {
-    if (w == null || w <= 0) return Math.max(10, Math.min(400, Math.round(raw)))
-    const maxPercent = Math.floor((MAX_SIDE_CLAMP / w) * 100)
-    const upper = Math.max(10, maxPercent)
-    return Math.min(upper, Math.max(10, Math.round(raw)))
-  }
-  function handlePercent(n: number) {
-    const w = effectiveOrigSize?.w ?? null
-    setPercent(clampPercentForWidth(n, w))
-  }
+  const hiddenImg = src ? (
+    <img
+      src={src}
+      alt=""
+      aria-hidden
+      style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+      onLoad={(e) => {
+        const img = e.currentTarget
+        setImgEl(img)
+        setOrigSize({ w: img.naturalWidth, h: img.naturalHeight })
+      }}
+      onError={() => setError("Failed to load image")}
+    />
+  ) : null
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-6">
         <header className="flex items-center justify-between py-2">
           <h1 className="text-xl font-bold tracking-tight text-white">Photoscaler</h1>
-          <span className="text-xs font-medium text-zinc-500">Phase 1 · Web only</span>
         </header>
 
-        {/* hidden measuring img — keeps scaleImage/origSize logic unchanged */}
-        {src && (
-          <img
-            ref={imgRef}
-            src={src}
-            alt=""
-            className="hidden"
-            onLoad={(e) => {
-              const img = e.currentTarget
-              setOrigSize({ w: img.naturalWidth, h: img.naturalHeight })
-            }}
-          />
-        )}
+        {error && <p className="text-sm text-red-500">{error}</p>}
+
+        {hiddenImg}
 
         <Routes>
           <Route
             path="/"
             element={
-              <>
-                <DropZone
-                  fileName={file?.name ?? null}
-                  fileSizeKb={file ? Number((file.size / 1024).toFixed(0)) : null}
-                  onFile={onFilePicked}
-                  onRemove={() => setFile(null)}
-                />
-                {error && <p className="text-sm text-red-500">{error}</p>}
-              </>
+              <DropZone
+                fileName={file?.name ?? null}
+                fileSizeKb={file ? Number((file.size / 1024).toFixed(0)) : null}
+                onFile={onFilePicked}
+                onRemove={() => {
+                  setFile(null)
+                  navigate("/")
+                }}
+              />
             }
           />
 
@@ -234,91 +111,16 @@ export default function App() {
               !src ? (
                 <Navigate to="/" replace />
               ) : (
-                <>
-                  {/* preview */}
-                  <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-4">
-                    <div className="flex flex-col gap-1">
-                      <p className="text-xs font-medium text-zinc-500">Preview</p>
-                      <h2 className="text-lg font-bold text-white">
-                        {outUrl && outSize ? "Preview & Download" : "Preview"}
-                      </h2>
-                      {outUrl && outSize && (
-                        <p className="text-xs text-zinc-400">
-                          Result: {outSize.w} × {outSize.h} px · {mode} at {percent}%
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                      <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center">
-                        <img
-                          src={outUrl ?? src}
-                          alt={outUrl ? "scaled preview" : "original preview"}
-                          className="max-h-[360px] max-w-full object-contain rounded-lg"
-                          style={{ imageRendering: mode === "pixelate" ? "pixelated" : "auto" }}
-                        />
-                      </div>
-                      {cropRect && (
-                        <p className="text-xs text-zinc-500">
-                          Crop: {Math.round(cropRect.width)}×{Math.round(cropRect.height)} at (
-                          {Math.round(cropRect.x)},{Math.round(cropRect.y)}) · {cropAspect}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* scale / download actions — main editor only */}
-                    <div className="flex flex-col gap-2">
-                      <button
-                        type="button"
-                        onClick={handleScale}
-                        className="w-full rounded-full bg-white py-3 text-base font-semibold text-black hover:bg-zinc-100 transition-colors"
-                      >
-                        Upscale / Scale
-                      </button>
-                      {error && <p className="text-sm text-red-500">{error}</p>}
-                      {outUrl && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={handleDownload}
-                            className="w-full rounded-full bg-white py-3 text-base font-semibold text-black hover:bg-zinc-100 transition-colors"
-                          >
-                            Download PNG
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOutUrl(null)
-                              setOutSize(null)
-                            }}
-                            className="w-full rounded-full border border-zinc-700 bg-zinc-800 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
-                          >
-                            Clear result
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </section>
-
-                  <ToolPicker
-                    onSelect={(tool) => {
-                      if (tool === "crop") navigate("/editor/crop")
-                      else navigate("/editor/resize")
-                    }}
-                  />
-
-                  {/* small remove image */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFile(null)
-                      navigate("/")
-                    }}
-                    className="self-start text-xs font-medium text-zinc-400 underline underline-offset-4 hover:text-zinc-200"
-                  >
-                    Remove image
-                  </button>
-                </>
+                <EditorScreen
+                  imgEl={imgEl}
+                  origSize={origSize}
+                  ops={ops}
+                  onUndo={() => setOps((prev) => prev.slice(0, -1))}
+                  onReset={() => setOps([])}
+                  onDownload={handleDownload}
+                  onRemove={() => setFile(null)}
+                  onOpenTool={(tool) => navigate(tool === "crop" ? "/editor/crop" : "/editor/resize")}
+                />
               )
             }
           />
@@ -330,15 +132,10 @@ export default function App() {
                 <Navigate to="/" replace />
               ) : (
                 <CropToolPage
-                  cropRect={cropRect}
-                  cropAspect={cropAspect}
-                  onCropRectChange={setCropRect}
-                  onCropAspectChange={handleCropAspectChange}
-                  onApply={() => navigate("/editor")}
-                  onBack={() => navigate(-1)}
-                  src={src}
-                  naturalSize={origSize}
-                  onReset={handleCropReset}
+                  imgEl={imgEl}
+                  origSize={origSize}
+                  baseOps={ops}
+                  onApply={applyOp}
                 />
               )
             }
@@ -351,16 +148,10 @@ export default function App() {
                 <Navigate to="/" replace />
               ) : (
                 <ResizeToolPage
-                  percent={percent}
-                  onPercent={handlePercent}
-                  mode={mode}
-                  onMode={setMode}
-                  origSize={effectiveOrigSize}
-                  onApply={() => {
-                    handleScale()
-                    navigate("/editor")
-                  }}
-                  onBack={() => navigate(-1)}
+                  imgEl={imgEl}
+                  origSize={origSize}
+                  baseOps={ops}
+                  onApply={applyOp}
                 />
               )
             }
@@ -369,12 +160,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
-        {error && <p className="hidden">{error}</p>}
-
-        <p className="text-center text-xs text-zinc-500">
-          All processing is local — image never leaves your browser. Phase 2: Capacitor wrapper + Share
-          intent.
-        </p>
+        <p className="text-center text-xs text-zinc-500">All processing is local — image never leaves your browser.</p>
       </div>
     </div>
   )
