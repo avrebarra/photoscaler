@@ -27,7 +27,7 @@ export function DropZone({
         <span className="sr-only">Select image</span>
       </div>
 
-      {/* drop card — mid-floor per mockup, gap above the home indicator */}
+      {/* drop card — mid-floor per mockup */}
       <div className="shrink-0 px-6 mb-[12vh] flex flex-col">
         <div
           onDragOver={(e) => e.preventDefault()}
@@ -50,8 +50,6 @@ export function DropZone({
           </div>
         </div>
       </div>
-      {/* home indicator */}
-      <div className="mx-auto h-[5px] w-[110px] rounded-full bg-white/25 shrink-0 mb-4" />
     </div>
     <input
       ref={fileInputRef}

@@ -124,7 +124,6 @@ export function Dock({ children, className }: { children: ReactNode; className?:
       className={`shrink-0 border-t border-white/[0.08] bg-[rgba(9,9,11,0.86)] backdrop-blur-[22px] px-6 pt-4 pb-7 flex flex-col gap-3.5 ${className ?? ""}`}
     >
       {children}
-      <div className="mx-auto h-[5px] w-[110px] rounded-full bg-white/25 shrink-0" />
     </div>
   )
 }
