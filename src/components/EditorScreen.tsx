@@ -29,7 +29,7 @@ export function EditorScreen({
   return (
     <>
       {/* composed preview */}
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-4">
+      <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-4 shadow-[0_4px_16px_rgba(0,0,0,0.5),0_1px_3px_rgba(0,0,0,0.4)]">
         <div className="flex flex-col gap-1">
           <p className="text-xs font-medium text-zinc-500">Preview</p>
           <div className="flex items-baseline justify-between">
@@ -44,7 +44,7 @@ export function EditorScreen({
           </div>
         </div>
 
-        <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center">
+        <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center shadow-[inset_0_2px_8px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(0,0,0,0.4)]">
           {url ? (
             <img
               src={url}
@@ -64,7 +64,7 @@ export function EditorScreen({
         <button
           type="button"
           onClick={onDownload}
-          className="w-full rounded-full bg-white py-3 text-base font-semibold text-black hover:bg-zinc-100 transition-colors"
+          className="w-full rounded-full bg-white py-3 text-base font-semibold text-black hover:bg-zinc-100 transition-all active:scale-[0.98] shadow-[0_3px_12px_rgba(0,0,0,0.5),0_1px_3px_rgba(0,0,0,0.4)] active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_2px_rgba(0,0,0,0.2)]"
         >
           Download PNG
         </button>
@@ -73,7 +73,7 @@ export function EditorScreen({
             type="button"
             onClick={onUndo}
             disabled={!hasOps}
-            className="flex-1 rounded-full border border-zinc-700 bg-zinc-800 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 rounded-full border border-zinc-700 bg-zinc-800 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-all active:scale-[0.98] shadow-[0_1px_4px_rgba(0,0,0,0.4),0_1px_2px_rgba(0,0,0,0.3)] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] disabled:shadow-none disabled:active:scale-100"
           >
             Undo
           </button>
@@ -81,7 +81,7 @@ export function EditorScreen({
             type="button"
             onClick={onReset}
             disabled={!hasOps}
-            className="flex-1 rounded-full border border-zinc-700 bg-zinc-800 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 rounded-full border border-zinc-700 bg-zinc-800 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-all active:scale-[0.98] shadow-[0_1px_4px_rgba(0,0,0,0.4),0_1px_2px_rgba(0,0,0,0.3)] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] disabled:shadow-none disabled:active:scale-100"
           >
             Reset
           </button>

@@ -82,7 +82,7 @@ export default function App() {
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-6">
         <header className="flex items-center justify-between py-2">
-          <h1 className="text-xl font-bold tracking-tight text-white">Photoscaler</h1>
+          <h1 className="text-xl font-bold tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">Photoscaler</h1>
         </header>
 
         {error && <p className="text-sm text-red-500">{error}</p>}

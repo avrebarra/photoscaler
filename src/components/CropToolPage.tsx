@@ -76,7 +76,7 @@ export function CropToolPage({
   return (
     <ToolPage title="Crop" backHref="/editor" onApply={handleApply} applyDisabled={!draft}>
       <div className="flex flex-col gap-3">
-        <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center">
+        <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center shadow-[inset_0_2px_8px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(0,0,0,0.4)]">
           <div className="relative inline-block">
             {url && stageSize.w > 0 && draft ? (
               <>
