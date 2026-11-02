@@ -1,6 +1,6 @@
 import { useRef } from "react"
 
-export function DropZone({
+export function WelcomeScreen({
   fileName: _fileName,
   fileSizeKb: _fileSizeKb,
   onFile,

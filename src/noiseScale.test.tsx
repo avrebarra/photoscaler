@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { compose, type Op } from "./lib/pipeline"
 import { scaleImage, applyNoise } from "./lib/scale"
-import { ResizeToolPage } from "./components/ResizeToolPage"
+import { ResizeToolScreen } from "./screens/ResizeToolScreen"
 
 // helpers
 function makeBase(w: number, h: number): HTMLCanvasElement {
@@ -29,8 +29,12 @@ describe("noise mode", () => {
     const smooth = scaleImage(img, 100, "smooth")
     const noisy = scaleImage(img, 100, "noise", 80)
     expect(smooth.canvas.width).toBe(noisy.canvas.width)
-    const sData = smooth.canvas.getContext("2d")!.getImageData(0, 0, smooth.canvas.width, smooth.canvas.height).data
-    const nData = noisy.canvas.getContext("2d")!.getImageData(0, 0, noisy.canvas.width, noisy.canvas.height).data
+    const sData = smooth.canvas
+      .getContext("2d")!
+      .getImageData(0, 0, smooth.canvas.width, smooth.canvas.height).data
+    const nData = noisy.canvas
+      .getContext("2d")!
+      .getImageData(0, 0, noisy.canvas.width, noisy.canvas.height).data
     // at least one channel differs due to grain
     let diff = 0
     for (let i = 0; i < sData.length; i++) if (sData[i] !== nData[i]) diff++
@@ -61,8 +65,12 @@ describe("noise mode", () => {
     const noiseOp: Op = { type: "resize", percent: 100, mode: "noise", noiseStrength: 60 }
     const s = compose(base, { w: 20, h: 20 }, [smoothOp], 1)
     const n = compose(base, { w: 20, h: 20 }, [noiseOp], 1)
-    const sData = s.canvas.getContext("2d")!.getImageData(0, 0, s.canvas.width, s.canvas.height).data
-    const nData = n.canvas.getContext("2d")!.getImageData(0, 0, n.canvas.width, n.canvas.height).data
+    const sData = s.canvas
+      .getContext("2d")!
+      .getImageData(0, 0, s.canvas.width, s.canvas.height).data
+    const nData = n.canvas
+      .getContext("2d")!
+      .getImageData(0, 0, n.canvas.width, n.canvas.height).data
     let diff = 0
     for (let i = 0; i < sData.length; i++) if (sData[i] !== nData[i]) diff++
     expect(diff).toBeGreaterThan(0)
@@ -78,17 +86,32 @@ describe("noise mode", () => {
   it("compose throws on invalid noiseStrength and MAX_SIDE", () => {
     const base = makeBase(10, 10)
     expect(() =>
-      compose(base, { w: 10, h: 10 }, [{ type: "resize", percent: 100, mode: "noise", noiseStrength: 200 }], 1),
+      compose(
+        base,
+        { w: 10, h: 10 },
+        [{ type: "resize", percent: 100, mode: "noise", noiseStrength: 200 }],
+        1,
+      ),
     ).toThrow(/Invalid noiseStrength/)
     expect(() =>
-      compose(base, { w: 4000, h: 4000 }, [{ type: "resize", percent: 300, mode: "noise", noiseStrength: 35 }], 1),
+      compose(
+        base,
+        { w: 4000, h: 4000 },
+        [{ type: "resize", percent: 300, mode: "noise", noiseStrength: 35 }],
+        1,
+      ),
     ).toThrow(/Output too large/)
   })
 
   it("ResizeToolPage shows Noise chip and grain slider when selected", () => {
     render(
       <MemoryRouter>
-        <ResizeToolPage imgEl={null} origSize={{ w: 100, h: 100 }} baseOps={[]} onApply={() => {}} />
+        <ResizeToolScreen
+          imgEl={null}
+          origSize={{ w: 100, h: 100 }}
+          baseOps={[]}
+          onApply={() => {}}
+        />
       </MemoryRouter>,
     )
     expect(screen.getByText("Noise (grain)")).toBeInTheDocument()

@@ -1,12 +1,12 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect } from "vitest"
-import { ResizeToolPage } from "./components/ResizeToolPage"
+import { ResizeToolScreen } from "./screens/ResizeToolScreen"
 import { MemoryRouter } from "react-router-dom"
 
 const renderPage = (origSize: { w: number; h: number } | null, baseOps: never[] = []) =>
   render(
     <MemoryRouter>
-      <ResizeToolPage imgEl={null} origSize={origSize} baseOps={baseOps} onApply={() => {}} />
+      <ResizeToolScreen imgEl={null} origSize={origSize} baseOps={baseOps} onApply={() => {}} />
     </MemoryRouter>,
   )
 

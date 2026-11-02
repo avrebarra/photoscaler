@@ -2,8 +2,8 @@ import { useMemo, useState } from "react"
 import type { ScaleMode } from "../lib/scale"
 import type { Op, ResizeOp, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
-import { Chip } from "./ui"
-import { ToolPage, ToolDock } from "./ToolPage"
+import { Chip } from "../components/ui"
+import { ToolPage, ToolDock } from "../components/ToolPage"
 
 const PRESETS = [25, 50, 100, 150, 200, 400]
 const MAX_SIDE = 8000
@@ -22,7 +22,7 @@ function clampNoiseStrength(v: number): number {
 
 // resize tool: scales the composed stage. draft is local — Back drops it,
 // Apply appends a resize op. preserves GW2JJ7P editable width binding.
-export function ResizeToolPage({
+export function ResizeToolScreen({
   imgEl,
   origSize,
   baseOps,
@@ -125,7 +125,9 @@ export function ResizeToolPage({
         <div className="flex items-center justify-between px-1">
           <span className="text-xs font-medium text-zinc-500">Scale · {percent}%</span>
           {displayW != null && displayH != null && (
-            <span className="text-xs text-zinc-400">Output: {displayW} × {displayH} px</span>
+            <span className="text-xs text-zinc-400">
+              Output: {displayW} × {displayH} px
+            </span>
           )}
         </div>
         {/* preset row — mockup: flex gap-1.5 justify-between, flex-1 h-10 */}
