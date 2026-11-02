@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photoscaler — RHZ6PJF Redesign (Presentation)</title>
+  <script src="https://unpkg.com/preact@10/dist/preact.umd.js"></script>
+  <script src="https://unpkg.com/preact@10/hooks/dist/hooks.umd.js"></script>
+  <script src="https://unpkg.com/htm@3/dist/htm.umd.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", ui-sans-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+    .hairline { border-color: rgba(255,255,255,.08); }
+    .dock { background: rgba(9,9,11,.86); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); }
+    .bezel { background: linear-gradient(145deg,#3a3a3c,#1c1c1e 40%,#48484a); box-shadow: 0 30px 60px rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.08); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 44px; height: 44px; border-radius: 9999px; border: 3px solid rgba(255,255,255,.18); border-top-color: #fff; animation: spin .9s linear infinite; }
+    @keyframes pulse-soft { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+    .pulse { animation: pulse-soft 2.2s ease-in-out infinite; }
+    @keyframes shimmer { 0% { background-position: -200px 0 } 100% { background-position: 200px 0 } }
+    .skeleton { background: linear-gradient(90deg, rgba(255,255,255,.04) 25%, rgba(255,255,255,.10) 37%, rgba(255,255,255,.04) 63%); background-size: 400px 100%; animation: shimmer 1.4s linear infinite; }
+  </style>
+</head>
+<body class="min-h-screen" style="background:#9aa88b">
+  <!-- presentation mockup: RHZ6PJF v8 — app-store-worthy pass: 16px gutters, 56px headers, Finish pill, big wordmark everywhere -->
+  <div id="root"></div>
+  <script>
+    const html = htm.bind(preact.h);
+    const { useState } = preactHooks;
+    const IMG = "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=700&q=80&auto=format&fit=crop";
+    const IMGW = "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=900&q=80&auto=format&fit=crop"; // landscape sample
+
+    // icons
+    function mk(d, s=18) { return html`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d=${d}/></svg>`; }
+    const IconCheck = () => mk("M20 6 9 17l-5-5");
+    const IconBack  = () => mk("M15 18l-6-6 6-6", 17);
+    const IconUndo  = () => mk("M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3");
+    const IconReset = () => mk("M3 12a9 9 0 1 0 9-9M3 3v6h6");
+    const IconDownload = () => mk("M12 3v12M7 10l5 5 5-5M4 21h16", 17);
+    const IconCrop  = () => mk("M6 2v14a2 2 0 0 0 2 2h14|M18 22V8a2 2 0 0 0-2-2H2", 19);
+    const IconResize = () => mk("M3 3h18v18H3z|M9 3v18M12 3v18", 19);
+    const IconWifi = () => mk("M5 12a11 11 0 0 1 14 0M8 15a7 7 0 0 1 8 0M11.5 18h1", 12);
+
+    // status bar
+    function StatusBar() {
+      return html`
+        <div class="flex items-center justify-between px-7 pt-3.5 pb-0.5 text-[13px] font-semibold text-white select-none">
+          <span>9:41</span>
+          <div class="flex items-center gap-1.5">
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="6" width="3" height="5" rx="1" fill="white"/><rect x="4.5" y="4" width="3" height="7" rx="1" fill="white"/><rect x="9" y="2" width="3" height="9" rx="1" fill="white"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="white"/></svg>
+            <${IconWifi} />
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0" y="0" width="21" height="12" rx="3.5" stroke="white" stroke-opacity=".4" fill="none"/><rect x="2" y="2" width="15" height="8" rx="2" fill="white"/><path d="M23 4v4a2 2 0 0 0 0-8z" fill="white" fill-opacity=".4"/></svg>
+          </div>
+        </div>
+      `;
+    }
+
+    // wordmark — app text logo
+    function Wordmark({ big }) {
+      return html`<h1 class="font-bold tracking-[-.02em] text-white leading-none ${big ? 'text-[26px]' : 'text-[19px]'}">Photoscaler</h1>`;
+    }
+
+    // header — 72px, roomy; home = centered wordmark; others = wordmark/back+title left, actions right
+    function Header({ wordmark, title, onBack, center, children }) {
+      if (center) {
+        return html`
+          <div class="dock border-b hairline h-[72px] px-6 flex items-center shrink-0">
+            <span class="w-10"></span>
+            <div class="flex-1 flex justify-center"><${Wordmark} big=${wordmark} /></div>
+            <span class="w-10"></span>
+          </div>
+        `;
+      }
+      return html`
+        <div class="dock border-b hairline h-[72px] px-6 flex items-center justify-between shrink-0">
+          ${onBack
+            ? html`<div class="flex items-center gap-1.5 -ml-1.5">
+                <button class="h-10 w-10 rounded-full grid place-items-center text-white active:bg-white/10 transition"><${IconBack} /></button>
+                <h1 class="text-[19px] font-bold tracking-[-.02em] leading-none">${title}</h1>
+              </div>`
+            : html`<${Wordmark} big=${wordmark} />`}
+          <div class="flex items-center gap-1">${children || null}</div>
+        </div>
+      `;
+    }
+
+    // ghost icon bar button (undo/reset)
+    function BarBtn({ label, dim, children }) {
+      return html`<button aria-label="${label}" class="h-10 w-10 rounded-full grid place-items-center text-zinc-300 active:bg-white/10 transition ${dim ? 'opacity-30' : ''}">${children}</button>`;
+    }
+    // primary pill — icon + text (Finish / Apply); compact so the big wordmark fits beside it
+    function PillBtn({ label, onClick, children }) {
+      return html`<button aria-label="${label}" onClick=${onClick} class="h-10 pl-2.5 pr-3.5 rounded-full bg-white text-black font-semibold text-[14px] flex items-center gap-1.5 active:scale-95 transition shadow-[0_2px_10px_rgba(0,0,0,.35)]">${children}</button>`;
+    }
+
+    // hero — letterboxed: blurred cover backdrop + full image contained (horizontal images safe)
+    function Hero({ crop, img }) {
+      const src = img || IMG;
+      return html`
+        <div class="flex-1 min-h-0 px-3 pt-4">
+          <div class="relative h-full rounded-[18px] overflow-hidden bg-black">
+            <img src=${src} alt="" class="absolute inset-0 h-full w-full object-cover blur-2xl scale-110 opacity-40" />
+            <img src=${src} alt="preview" class="absolute inset-0 h-full w-full object-contain" />
+            ${crop && html`
+              <div class="absolute inset-[9%] border-[1.5px] border-white/95" style="box-shadow: 0 0 0 9999px rgba(0,0,0,.45)">
+                ${["-top-1.5 -left-1.5","-top-1.5 -right-1.5","-bottom-1.5 -left-1.5","-bottom-1.5 -right-1.5"].map(pos => html`
+                  <span class="absolute ${pos} h-3.5 w-3.5 rounded-[4px] bg-white ring-1 ring-black/40"></span>`)}
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    // dock — 16px gutters, generous rhythm, home indicator
+    function Dock({ children }) {
+      return html`
+        <div class="dock border-t hairline px-6 pt-4 pb-7 flex flex-col gap-3.5 shrink-0">
+          ${children}
+          <div class="mx-auto h-[5px] w-[110px] rounded-full bg-white/25"></div>
+        </div>
+      `;
+    }
+
+    // tool segmented control
+    function ToolSeg({ onPick }) {
+      return html`
+        <div class="mx-auto flex items-center gap-1 rounded-full bg-white/10 p-1">
+          <button aria-label="Crop" onClick=${() => onPick("crop")} class="h-11 px-8 rounded-full grid place-items-center bg-white text-black transition"><${IconCrop} /></button>
+          <button aria-label="Resize" onClick=${() => onPick("resize")} class="h-11 px-8 rounded-full grid place-items-center text-zinc-300 transition"><${IconResize} /></button>
+        </div>
+      `;
+    }
+
+    // home — no header bar: wordmark as hero top-center, drop box fills the bottom
+    function HomeScreen() {
+      return html`
+        <div class="flex flex-col h-full">
+          <div class="flex-1 flex flex-col items-center pt-[270px] min-h-0">
+            <div class="text-center">
+              <h1 class="text-[40px] font-bold tracking-[-.02em] leading-none text-white">Photoscaler</h1>
+              <p class="text-[14px] text-zinc-400 mt-3">Simple image upscaler</p>
+            </div>
+          </div>
+          <div class="h-[300px] shrink-0 px-6 mb-[110px] flex flex-col">
+            <div class="flex-1 rounded-[18px] bg-zinc-900 border hairline flex flex-col overflow-hidden">
+              <div class="flex-1 flex flex-col items-center justify-center gap-4 px-7 m-2 rounded-[14px] border border-dashed border-white/10 bg-black/40 text-center">
+                <button class="h-12 px-9 rounded-full bg-white text-[16px] font-semibold text-black active:scale-95 transition shadow-[0_2px_10px_rgba(0,0,0,.35)]">Choose image</button>
+                <p class="text-[13px] text-zinc-500">or drop it here</p>
+              </div>
+            </div>
+          </div>
+          <div class="mx-auto h-[5px] w-[110px] rounded-full bg-white/25 mb-4 shrink-0"></div>
+        </div>
+      `;
+    }
+
+    // editor — wordmark header + undo/reset icons + Finish pill; tools in dock
+    function EditorScreen({ onPick }) {
+      return html`
+        <div class="flex flex-col h-full">
+          <${Header} wordmark=${true} children=${html`<div class="flex items-center gap-1">
+              <${BarBtn} label="Undo" dim><${IconUndo} /></${BarBtn}>
+              <${BarBtn} label="Reset" dim><${IconReset} /></${BarBtn}>
+              <${PillBtn} label="Finish — download PNG"><${IconDownload} />Finish</${PillBtn}>
+            </div>`} />
+          <div class="flex-1 min-h-0 flex flex-col">
+            <${Hero} img=${IMGW} />
+            <p class="text-center text-[11px] text-zinc-500 pt-3.5 pb-1.5 tabular-nums tracking-wide">4032 × 3024 px</p>
+          </div>
+          <${Dock}><${ToolSeg} onPick=${onPick} /></${Dock}>
+        </div>
+      `;
+    }
+
+    // crop — own page
+    function CropScreen({ goBack }) {
+      return html`
+        <div class="flex flex-col h-full">
+          <${Header} title="Crop" onBack=${goBack} children=${html`<${PillBtn} label="Apply crop" onClick=${goBack}><${IconCheck} />Apply</${PillBtn}>`} />
+          <div class="flex-1 min-h-0 flex flex-col"><${Hero} crop=${true} /></div>
+          <${Dock}>
+            <div class="flex gap-2 justify-between">
+              ${["Free","1:1","4:3","16:9","Original"].map((l,i) => html`
+                <button class="flex-1 h-11 rounded-full text-[13px] font-medium transition active:scale-95 ${i===0 ? 'bg-white text-black' : 'bg-white/10 text-zinc-300'}">${l}</button>
+              `)}
+            </div>
+          </${Dock}>
+        </div>
+      `;
+    }
+
+    // resize — own page
+    function ResizeScreen({ goBack }) {
+      return html`
+        <div class="flex flex-col h-full">
+          <${Header} title="Resize" onBack=${goBack} children=${html`<${PillBtn} label="Apply resize" onClick=${goBack}><${IconCheck} />Apply</${PillBtn}>`} />
+          <div class="flex-1 min-h-0 flex flex-col"><${Hero} /></div>
+          <${Dock}>
+            <div class="flex gap-1.5 justify-between">
+              ${[25,50,100,150,200,400].map(x => html`
+                <button class="flex-1 h-10 rounded-full text-[12.5px] font-medium tabular-nums transition active:scale-95 ${x===150 ? 'bg-white text-black' : 'bg-white/10 text-zinc-300'}">${x}%</button>
+              `)}
+            </div>
+            <div class="flex items-center gap-3.5 px-1.5">
+              <input type="range" min="10" max="400" value="150" class="flex-1 accent-white" />
+              <span class="text-[14.5px] font-medium tabular-nums text-zinc-100 w-[52px] text-right">150%</span>
+            </div>
+          </${Dock}>
+        </div>
+      `;
+    }
+
+    // loading — picked image decoding before first render: skeleton hero + spinner, no tools yet
+    function LoadingScreen() {
+      return html`
+        <div class="flex flex-col h-full">
+          <${Header} wordmark=${true} children=${html`<div class="flex items-center gap-1 opacity-30">
+              <${BarBtn} label="Undo" dim><${IconUndo} /></${BarBtn}>
+              <${BarBtn} label="Reset" dim><${IconReset} /></${BarBtn}>
+            </div>`} />
+          <div class="flex-1 min-h-0 flex flex-col">
+            <div class="flex-1 min-h-0 px-3 pt-4">
+              <div class="relative h-full rounded-[18px] overflow-hidden bg-zinc-900 border hairline flex flex-col items-center justify-center gap-5">
+                <div class="skeleton absolute inset-0"></div>
+                <div class="spinner relative"></div>
+                <p class="text-[14px] font-medium text-white pulse relative">Loading image…</p>
+              </div>
+            </div>
+            <p class="text-center text-[11px] text-zinc-500 pt-3.5 pb-1.5 tabular-nums tracking-wide">photo-forest.jpg</p>
+          </div>
+          <${Dock}>
+            <div class="flex items-center justify-center gap-3 opacity-30">
+              <span class="h-11 w-11 rounded-full grid place-items-center bg-white/10 text-zinc-300"><${IconCrop} /></span>
+              <span class="h-11 w-11 rounded-full grid place-items-center bg-white/10 text-zinc-300"><${IconResize} /></span>
+            </div>
+          </${Dock}>
+        </div>
+      `;
+    }
+
+    // processing — applying ops: image held blurred/dim, spinner + status, no controls
+    function ProcessingScreen() {
+      return html`
+        <div class="flex flex-col h-full">
+          <${Header} wordmark=${true} children=${html`<div class="flex items-center gap-1 opacity-40">
+              <${BarBtn} label="Undo"><${IconUndo} /></${BarBtn}>
+              <${BarBtn} label="Reset"><${IconReset} /></${BarBtn}>
+            </div>`} />
+          <div class="flex-1 min-h-0 flex flex-col">
+            <div class="flex-1 min-h-0 px-3 pt-4 relative">
+              <div class="relative h-full rounded-[18px] overflow-hidden bg-black">
+                <img src=${IMGW} alt="" class="absolute inset-0 h-full w-full object-cover blur-md scale-105 opacity-50" />
+                <div class="absolute inset-0 bg-black/30"></div>
+                <div class="absolute inset-0 flex flex-col items-center justify-center gap-5">
+                  <div class="spinner"></div>
+                  <p class="text-[14px] font-medium text-white pulse">Applying changes…</p>
+                </div>
+              </div>
+            </div>
+            <p class="text-center text-[11px] text-zinc-500 pt-3.5 pb-1.5 tabular-nums tracking-wide">4032 × 3024 px</p>
+          </div>
+          <${Dock}>
+            <div class="flex items-center justify-center gap-3 opacity-30">
+              <span class="h-11 w-11 rounded-full grid place-items-center bg-white/10 text-zinc-300"><${IconCrop} /></span>
+              <span class="h-11 w-11 rounded-full grid place-items-center bg-white/10 text-zinc-300"><${IconResize} /></span>
+            </div>
+          </${Dock}>
+        </div>
+      `;
+    }
+
+    // phone shell — TRUE scale: 393×852 (iPhone 15), so header/dock density matches the real device
+    function Phone({ title, caption, children }) {
+      return html`
+        <figure class="flex flex-col items-center gap-6">
+          <div class="bezel relative w-[393px] h-[852px] rounded-[56px] p-[11px]">
+            <div class="relative w-full h-full rounded-[46px] overflow-hidden bg-zinc-950 flex flex-col">
+              <div class="absolute top-[13px] left-1/2 -translate-x-1/2 h-[27px] w-[105px] rounded-full bg-black z-20"></div>
+              <${StatusBar} />
+              <div class="flex-1 min-h-0 flex flex-col">${children}</div>
+            </div>
+          </div>
+          <figcaption class="text-center">
+            <p class="text-[15px] font-semibold text-white">${title}</p>
+            <p class="text-[12.5px] text-black/50 mt-1 max-w-[300px] leading-snug">${caption}</p>
+          </figcaption>
+        </figure>
+      `;
+    }
+
+    function App() {
+      return html`
+        <div class="w-full min-h-screen px-6 py-14">
+          <header class="text-center max-w-xl mx-auto mb-12">
+            <p class="text-[11px] font-bold tracking-[.2em] uppercase text-black/40 mb-2">Photoscaler · RHZ6PJF</p>
+            <h1 class="text-[32px] font-bold tracking-tight text-white">Screen composition redesign</h1>
+            <p class="text-[14px] text-black/60 mt-2">Image-first editing. One primary action per header — Finish closes the loop.</p>
+          </header>
+
+          <div class="flex flex-wrap justify-center gap-x-8 gap-y-12 max-w-[1800px] mx-auto">
+            <${Phone} title="Home" caption="Wordmark + pick. Nothing else.">
+              <${HomeScreen} />
+            </${Phone}>
+            <${Phone} title="Editor" caption="Undo · reset · Finish in header. Tools in the dock.">
+              <${EditorScreen} onPick=${() => {}} />
+            </${Phone}>
+            <${Phone} title="Crop" caption="Own page. Apply commits, back discards.">
+              <${CropScreen} goBack=${() => {}} />
+            </${Phone}>
+            <${Phone} title="Resize" caption="Own page. Presets + slider at the thumb.">
+              <${ResizeScreen} goBack=${() => {}} />
+            </${Phone}>
+            <${Phone} title="Processing" caption="Transient state while ops apply. Controls dim, spinner owns the moment.">
+              <${ProcessingScreen} />
+            </${Phone}>
+            <${Phone} title="Loading" caption="Picked image decoding. Skeleton hero, controls inert until first render.">
+              <${LoadingScreen} />
+            </${Phone}>
+          </div>
+
+          <footer class="text-center mt-14 text-[12px] text-black/40">
+            Composition only — control styling and tool bodies unchanged · mockup for ticket RHZ6PJF
+          </footer>
+        </div>
+      `;
+    }
+
+    preact.render(html`<${App} />`, document.getElementById("root"));
+  </script>
+</body>
+</html>
