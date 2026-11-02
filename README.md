@@ -6,6 +6,8 @@ Simple single-image upscaler/downscaler - pick a percentage, choose `Blur (smoot
 
 Vite + React + TypeScript + Tailwind. No backend. `imageSmoothingEnabled` toggles interpolation.
 
+Agent rules: see AGENTS.md (least-code, single-file, layered)
+
 ## Run (Phase 1 - Web)
 
 ```bash
