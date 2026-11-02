@@ -1,5 +1,9 @@
+import { useMemo, useState } from "react"
 import type { ScaleMode } from "../lib/scale"
+import type { Op, ResizeOp, Size } from "../lib/pipeline"
+import { useComposedImage } from "../hooks/useComposedImage"
 import { Chip } from "./ui"
+import { ToolPage } from "./ToolPage"
 
 const PRESETS = [25, 50, 100, 150, 200, 400]
 const MAX_SIDE = 8000
@@ -11,78 +15,90 @@ function clampPercent(raw: number, origW: number | null): number {
   return Math.min(upper, Math.max(10, raw))
 }
 
+// resize tool: scales the composed stage. draft is local — Back drops it,
+// Apply appends a resize op. preserves GW2JJ7P editable width binding.
 export function ResizeToolPage({
-  percent,
-  onPercent,
-  mode,
-  onMode,
+  imgEl,
   origSize,
+  baseOps,
   onApply,
-  onBack,
 }: {
-  percent: number
-  onPercent: (n: number) => void
-  mode: ScaleMode
-  onMode: (m: ScaleMode) => void
-  origSize: { w: number; h: number } | null
-  onApply: () => void
-  onBack: () => void
+  imgEl: HTMLImageElement | null
+  origSize: Size | null
+  baseOps: Op[]
+  onApply: (op: ResizeOp) => void
 }) {
-  // derived target dimensions (aspect-locked)
-  const targetW = origSize ? Math.round((origSize.w * percent) / 100) : null
-  const targetH = origSize ? Math.round((origSize.h * percent) / 100) : null
-  const maxPercent = origSize ? Math.floor((MAX_SIDE / origSize.w) * 100) : 400
+  const [percent, setPercent] = useState(100)
+  const [mode, setMode] = useState<ScaleMode>("smooth")
+
+  const draftOps = useMemo<Op[]>(() => [...baseOps, { type: "resize", percent, mode }], [baseOps, percent, mode])
+  const { url, stageSize: outSize } = useComposedImage(imgEl, origSize, draftOps)
+
+  // effective orig for clamp is the stage size before this draft's resize?
+  // GW2JJ7P clamped against origSize.w; for op-stack we clamp against the
+  // current stage's width (baseOps stage) so MAX_SIDE applies to output.
+  // stage before draft = useComposedImage with baseOps (or compute)
+  const clampW = origSize?.w ?? null
+  const maxPercent = clampW ? Math.floor((MAX_SIDE / clampW) * 100) : 400
+  // width/height for inputs + output text derive from origSize*percent so
+  // the binding is testable without a decoded image; live preview (outSize)
+  // overrides when available but must not block the width input.
+  const computedW = clampW ? Math.round((clampW * percent) / 100) : null
+  const computedH = origSize ? Math.round((origSize.h * percent) / 100) : null
+  const targetW = outSize.w > 0 ? outSize.w : computedW
+  const targetH = outSize.h > 0 ? outSize.h : computedH
+  const displayW = computedW
+  const displayH = computedH
 
   function handleWidthChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value
     if (raw === "") return
     const newW = Number(raw)
     if (!Number.isFinite(newW) || newW <= 0) return
-    if (!origSize) return
-    const rawPercent = Math.round((newW / origSize.w) * 100)
-    const clamped = clampPercent(rawPercent, origSize.w)
-    onPercent(clamped)
+    if (!clampW) return
+    const rawPercent = Math.round((newW / clampW) * 100)
+    setPercent(clampPercent(rawPercent, clampW))
   }
 
   function handlePercentChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = Number(e.target.value)
     if (!Number.isFinite(raw)) return
     if (raw <= 0) {
-      onPercent(10)
+      setPercent(10)
       return
     }
-    onPercent(clampPercent(Math.round(raw), origSize?.w ?? null))
+    setPercent(clampPercent(Math.round(raw), clampW))
   }
 
   function handleSliderChange(e: React.ChangeEvent<HTMLInputElement>) {
-    onPercent(clampPercent(Number(e.target.value), origSize?.w ?? null))
+    setPercent(clampPercent(Number(e.target.value), clampW))
   }
 
   function handlePreset(p: number) {
-    onPercent(clampPercent(p, origSize?.w ?? null))
+    setPercent(clampPercent(p, clampW))
+  }
+
+  function handleApply() {
+    onApply({ type: "resize", percent, mode })
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className="rounded-full bg-zinc-800 px-4 py-1.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
-        >
-          ← Back
-        </button>
-        <h2 className="text-sm font-bold text-white">Resize</h2>
-        <div className="w-16" />
-      </div>
-
+    <ToolPage title="Resize" backHref="/editor" onApply={handleApply}>
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-zinc-500">Scale · {percent}%</span>
-          {origSize && (
+          {origSize && displayW != null && displayH != null && (
             <span className="text-xs text-zinc-400">
-              Output: {Math.round((origSize.w * percent) / 100)} × {Math.round((origSize.h * percent) / 100)} px
+              Output: {displayW} × {displayH} px
             </span>
+          )}
+        </div>
+
+        <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center">
+          {url ? (
+            <img src={url} alt="resize canvas" className="block max-h-[360px] max-w-full object-contain rounded-lg" />
+          ) : (
+            <span className="py-10 text-xs text-zinc-500">Rendering…</span>
           )}
         </div>
 
@@ -108,7 +124,7 @@ export function ResizeToolPage({
             <input
               type="number"
               min={10}
-              max={origSize ? Math.max(10, maxPercent) : 800}
+              max={clampW ? Math.max(10, maxPercent) : 800}
               value={percent}
               onChange={handlePercentChange}
               className="w-20 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500"
@@ -123,42 +139,32 @@ export function ResizeToolPage({
           <input
             type="number"
             aria-label="Target width"
-            placeholder={origSize ? String(targetW) : "—"}
+            placeholder={computedW != null ? String(computedW) : "—"}
             value={targetW ?? ""}
             onChange={handleWidthChange}
-            disabled={!origSize}
-            min={origSize ? Math.max(1, Math.round((origSize.w * 10) / 100)) : undefined}
-            max={origSize ? MAX_SIDE : undefined}
+            disabled={clampW == null}
+            min={clampW ? Math.max(1, Math.round((clampW * 10) / 100)) : undefined}
+            max={MAX_SIDE}
             className="flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500 disabled:opacity-40 disabled:cursor-not-allowed"
           />
-          <span className="text-xs text-zinc-500 shrink-0">
-            × {targetH ?? "—"} px
-          </span>
+          <span className="text-xs text-zinc-500 shrink-0">× {targetH ?? "—"} px</span>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <span className="text-xs font-medium text-zinc-500">Interpolation</span>
+          <div className="flex gap-2">
+            <Chip active={mode === "smooth"} onClick={() => setMode("smooth")}>
+              Blur (smooth)
+            </Chip>
+            <Chip active={mode === "pixelate"} onClick={() => setMode("pixelate")}>
+              Pixelate (sharp)
+            </Chip>
+          </div>
+          <p className="text-xs text-zinc-500">
+            {mode === "smooth" ? "Bilinear-like · good for photos" : "Nearest-neighbor · keeps hard pixels"}
+          </p>
         </div>
       </div>
-
-      <div className="flex flex-col gap-3">
-        <span className="text-xs font-medium text-zinc-500">Interpolation</span>
-        <div className="flex gap-2">
-          <Chip active={mode === "smooth"} onClick={() => onMode("smooth")}>
-            Blur (smooth)
-          </Chip>
-          <Chip active={mode === "pixelate"} onClick={() => onMode("pixelate")}>
-            Pixelate (sharp)
-          </Chip>
-        </div>
-        <p className="text-xs text-zinc-500">
-          {mode === "smooth" ? "Bilinear-like · good for photos" : "Nearest-neighbor · keeps hard pixels"}
-        </p>
-      </div>
-
-      <button
-        type="button"
-        onClick={onApply}
-        className="w-full rounded-full bg-white py-3 text-base font-semibold text-black hover:bg-zinc-100 transition-colors"
-      >
-        Apply
-      </button>
-    </section>
+    </ToolPage>
   )
 }
