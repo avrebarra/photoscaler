@@ -176,7 +176,7 @@ export default function App() {
       <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-6">
         <header className="flex items-center justify-between py-2">
           <h1 className="text-xl font-bold tracking-tight text-white">Photoscaler</h1>
-          <span className="text-xs font-medium text-zinc-500">Phase 1 · Web only</span>
+          <span className="text-xs font-medium text-zinc-500">-</span>
         </header>
 
         {/* hidden measuring img — keeps scaleImage/origSize logic unchanged */}
@@ -232,11 +232,6 @@ export default function App() {
           onScale={handleScale}
           disabled={!src}
         />
-
-        <p className="text-center text-xs text-zinc-500">
-          All processing is local — image never leaves your browser. Phase 2: Capacitor wrapper +
-          Share intent.
-        </p>
       </div>
     </div>
   )
