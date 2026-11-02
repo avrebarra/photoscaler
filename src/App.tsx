@@ -177,6 +177,19 @@ export default function App() {
     ? { w: Math.round(cropRect.width), h: Math.round(cropRect.height) }
     : origSize
 
+  // clamp helper — silent clamp to 8000px max side, lower bound 10
+  const MAX_SIDE_CLAMP = 8000
+  function clampPercentForWidth(raw: number, w: number | null): number {
+    if (w == null || w <= 0) return Math.max(10, Math.min(400, Math.round(raw)))
+    const maxPercent = Math.floor((MAX_SIDE_CLAMP / w) * 100)
+    const upper = Math.max(10, maxPercent)
+    return Math.min(upper, Math.max(10, Math.round(raw)))
+  }
+  function handlePercent(n: number) {
+    const w = effectiveOrigSize?.w ?? null
+    setPercent(clampPercentForWidth(n, w))
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-6">
@@ -339,7 +352,7 @@ export default function App() {
               ) : (
                 <ResizeToolPage
                   percent={percent}
-                  onPercent={setPercent}
+                  onPercent={handlePercent}
                   mode={mode}
                   onMode={setMode}
                   origSize={effectiveOrigSize}
