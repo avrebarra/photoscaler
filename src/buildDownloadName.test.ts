@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { buildDownloadName } from "./App"
+import { buildDownloadName } from "./lib/buildDownloadName"
 
 function localDate(y: number, m: number, d: number, h: number, min: number, s: number) {
   return new Date(y, m - 1, d, h, min, s)
@@ -21,7 +21,7 @@ describe("buildDownloadName", () => {
     expect(name).toMatch(/^image-\d{8}T\d{6}\.png$/)
   })
 
-  it("always timestamped — no -edited words", () => {
+  it("always timestamped, no -edited words", () => {
     const names = [
       buildDownloadName("a.jpg", date),
       buildDownloadName("b.png", date),
@@ -35,7 +35,9 @@ describe("buildDownloadName", () => {
 
   it("empty name falls back to image + png", () => {
     expect(buildDownloadName("", date)).toBe("image-20251202T143000.png")
-    expect(buildDownloadName(".png", localDate(2025, 1, 1, 0, 0, 0))).toBe("image-20250101T000000.png")
+    expect(buildDownloadName(".png", localDate(2025, 1, 1, 0, 0, 0))).toBe(
+      "image-20250101T000000.png",
+    )
   })
 
   it("multi-dot name keeps stem before last dot", () => {

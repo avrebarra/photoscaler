@@ -1,14 +1,6 @@
 import type { ReactNode } from "react"
 
-export function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: ReactNode
-}) {
+export function Chip({ active, onClick, children }: ChipProps) {
   return (
     <button
       type="button"
@@ -24,15 +16,7 @@ export function Chip({
   )
 }
 
-export function PrimaryButton({
-  onClick,
-  disabled,
-  children,
-}: {
-  onClick: () => void
-  disabled?: boolean
-  children: ReactNode
-}) {
+export function PrimaryButton({ onClick, disabled, children }: PrimaryButtonProps) {
   return (
     <button
       type="button"
@@ -47,4 +31,16 @@ export function PrimaryButton({
       {children}
     </button>
   )
+}
+
+type ChipProps = {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}
+
+type PrimaryButtonProps = {
+  onClick: () => void
+  disabled?: boolean
+  children: ReactNode
 }

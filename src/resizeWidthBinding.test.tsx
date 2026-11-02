@@ -7,7 +7,7 @@ const renderPage = (origSize: { w: number; h: number } | null, baseOps: never[] 
   render(
     <MemoryRouter>
       <ResizeToolScreen imgEl={null} origSize={origSize} baseOps={baseOps} onApply={() => {}} />
-    </MemoryRouter>
+    </MemoryRouter>,
   )
 
 describe("resize dial + badge + settings overlay", () => {

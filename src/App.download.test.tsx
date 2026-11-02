@@ -1,10 +1,14 @@
 import { useState } from "react"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, it, expect, vi } from "vitest"
-import { buildDownloadName } from "./App"
+import { buildDownloadName } from "./lib/buildDownloadName"
 
 // isolated handleDownload-like component to test error handling without App image-load plumbing
-function makeDownloader(opts: { compose: () => { canvas: HTMLCanvasElement }; canvasToUrl: () => string; fileName: string }) {
+function makeDownloader(opts: {
+  compose: () => { canvas: HTMLCanvasElement }
+  canvasToUrl: () => string
+  fileName: string
+}) {
   return function Downloader() {
     const [error, setError] = useState<string | null>(null)
     function handleDownload() {
@@ -13,7 +17,10 @@ function makeDownloader(opts: { compose: () => { canvas: HTMLCanvasElement }; ca
         const _url = opts.canvasToUrl()
         const a = document.createElement("a")
         a.href = _url
-        ;(a as unknown as { download: string }).download = buildDownloadName(opts.fileName, new Date(2025, 11, 2, 14, 30, 0))
+        ;(a as unknown as { download: string }).download = buildDownloadName(
+          opts.fileName,
+          new Date(2025, 11, 2, 14, 30, 0),
+        )
         a.click()
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : String(e))
@@ -33,23 +40,25 @@ describe("handleDownload — timestamp + error handling", () => {
     const fakeCanvas = document.createElement("canvas")
     let capturedDownload = ""
     const origCreate = document.createElement.bind(document)
-    const spy = vi.spyOn(document, "createElement").mockImplementation((tagName: string, opts?: ElementCreationOptions) => {
-      if (tagName === "a") {
-        const a = origCreate(tagName, opts) as HTMLAnchorElement
-        let dl = ""
-        Object.defineProperty(a, "download", {
-          get: () => dl,
-          set: (v: string) => {
-            dl = v
-            capturedDownload = v
-          },
-          configurable: true,
-        })
-        a.click = vi.fn()
-        return a as unknown as HTMLElement
-      }
-      return origCreate(tagName, opts)
-    })
+    const spy = vi
+      .spyOn(document, "createElement")
+      .mockImplementation((tagName: string, opts?: ElementCreationOptions) => {
+        if (tagName === "a") {
+          const a = origCreate(tagName, opts) as HTMLAnchorElement
+          let dl = ""
+          Object.defineProperty(a, "download", {
+            get: () => dl,
+            set: (v: string) => {
+              dl = v
+              capturedDownload = v
+            },
+            configurable: true,
+          })
+          a.click = vi.fn()
+          return a as unknown as HTMLElement
+        }
+        return origCreate(tagName, opts)
+      })
 
     const Downloader = makeDownloader({
       compose: () => ({ canvas: fakeCanvas }),
@@ -84,16 +93,18 @@ describe("handleDownload — timestamp + error handling", () => {
   it("error path: compose throws → error shown, no download click", () => {
     let clickCalled = false
     const origCreate = document.createElement.bind(document)
-    const spy = vi.spyOn(document, "createElement").mockImplementation((tagName: string, opts?: ElementCreationOptions) => {
-      if (tagName === "a") {
-        const a = origCreate(tagName, opts) as HTMLAnchorElement
-        a.click = vi.fn(() => {
-          clickCalled = true
-        })
-        return a as unknown as HTMLElement
-      }
-      return origCreate(tagName, opts)
-    })
+    const spy = vi
+      .spyOn(document, "createElement")
+      .mockImplementation((tagName: string, opts?: ElementCreationOptions) => {
+        if (tagName === "a") {
+          const a = origCreate(tagName, opts) as HTMLAnchorElement
+          a.click = vi.fn(() => {
+            clickCalled = true
+          })
+          return a as unknown as HTMLElement
+        }
+        return origCreate(tagName, opts)
+      })
 
     const Downloader = makeDownloader({
       compose: () => {

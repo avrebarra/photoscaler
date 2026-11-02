@@ -69,7 +69,11 @@ function lanczosResample(
       const srcCenter = (dstX + 0.5) / scaleX - 0.5
       const left = Math.ceil(srcCenter - filterA_X)
       const right = Math.floor(srcCenter + filterA_X)
-      let r = 0, g = 0, b = 0, al = 0, wSum = 0
+      let r = 0,
+        g = 0,
+        b = 0,
+        al = 0,
+        wSum = 0
       for (let k = left; k <= right; k++) {
         const clamped = Math.max(0, Math.min(srcW - 1, k))
         const w = lanczosKernel((srcCenter - k) * filterScaleX, a)
@@ -98,7 +102,11 @@ function lanczosResample(
     const top = Math.ceil(srcCenter - filterA_Y)
     const bottom = Math.floor(srcCenter + filterA_Y)
     for (let x = 0; x < dstW; x++) {
-      let r = 0, g = 0, b = 0, al = 0, wSum = 0
+      let r = 0,
+        g = 0,
+        b = 0,
+        al = 0,
+        wSum = 0
       for (let k = top; k <= bottom; k++) {
         const clamped = Math.max(0, Math.min(srcH - 1, k))
         const w = lanczosKernel((srcCenter - k) * filterScaleY, a)

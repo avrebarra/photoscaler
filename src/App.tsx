@@ -2,18 +2,11 @@ import { useEffect, useState } from "react"
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom"
 import { canvasToUrl } from "./lib/scale"
 import { compose, type CropOp, type Op, type ResizeOp, type Size } from "./lib/pipeline"
+import { buildDownloadName } from "./lib/buildDownloadName"
 import { WelcomeScreen } from "./screens/WelcomeScreen"
 import { EditorScreen } from "./screens/EditorScreen"
 import { CropToolScreen } from "./screens/CropToolScreen"
 import { ResizeToolScreen } from "./screens/ResizeToolScreen"
-
-export function buildDownloadName(name: string, date: Date): string {
-  const base = name.replace(/\.[^.]+$/, "") || "image"
-  const ext = name.match(/\.([^.]+)$/)?.[1] ?? "png"
-  const pad = (n: number) => String(n).padStart(2, "0")
-  const timestamp = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
-  return `${base}-${timestamp}.${ext}`
-}
 
 export default function App() {
   const [file, setFile] = useState<File | null>(null)
@@ -24,22 +17,12 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  // object URL lifecycle + full state reset when the file leaves
+  // revoke previous object URL when src changes or on unmount, no setState here
   useEffect(() => {
-    if (!file) {
-      setSrc(null)
-      setOrigSize(null)
-      setImgEl(null)
-      setOps([])
-      setError(null)
-      return
+    return () => {
+      if (src) URL.revokeObjectURL(src)
     }
-    const url = URL.createObjectURL(file)
-    setSrc(url)
-    setOps([])
-    setError(null)
-    return () => URL.revokeObjectURL(url)
-  }, [file])
+  }, [src])
 
   function onFilePicked(f: File | null) {
     if (!f) return
@@ -47,7 +30,13 @@ export default function App() {
       setError("Please pick an image file")
       return
     }
+    const url = URL.createObjectURL(f)
     setFile(f)
+    setSrc(url)
+    setOrigSize(null)
+    setImgEl(null)
+    setOps([])
+    setError(null)
     navigate("/editor")
   }
 

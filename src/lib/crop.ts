@@ -20,7 +20,10 @@ export function ratioForAspect(aspect: CropAspect, size: { w: number; h: number 
   }
 }
 
-export function containRect(container: { w: number; h: number }, natural: { w: number; h: number }): ContainRect {
+export function containRect(
+  container: { w: number; h: number },
+  natural: { w: number; h: number },
+): ContainRect {
   if (container.w <= 0 || container.h <= 0 || natural.w <= 0 || natural.h <= 0) {
     return { x: 0, y: 0, w: container.w, h: container.h, scale: 1 }
   }

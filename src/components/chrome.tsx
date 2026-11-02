@@ -4,8 +4,7 @@ import { Check, ArrowLeft, Undo2, Download } from "lucide-react"
 
 export { Check, ArrowLeft, Undo2, Download }
 
-/* wordmark — app text logo */
-export function Wordmark({ big }: { big?: boolean }) {
+export function Wordmark({ big }: WordmarkProps) {
   return (
     <span
       className={`font-bold tracking-[-.02em] leading-none text-white ${big ? "text-[26px]" : "text-[19px]"}`}
@@ -21,20 +20,7 @@ export function BigWordmark() {
   )
 }
 
-/* header — 72px dock bar */
-export function ChromeHeader({
-  wordmark,
-  title,
-  onBack,
-  backHref,
-  children,
-}: {
-  wordmark?: boolean
-  title?: string
-  onBack?: string
-  backHref?: string
-  children?: ReactNode
-}) {
+export function ChromeHeader({ wordmark, title, onBack, backHref, children }: ChromeHeaderProps) {
   const left =
     onBack || backHref ? (
       <div className="flex items-center gap-1 -ml-1.5">
@@ -65,20 +51,7 @@ export function ChromeHeader({
   )
 }
 
-/* ghost icon button */
-export function BarBtn({
-  label,
-  children,
-  onClick,
-  disabled,
-  dim,
-}: {
-  label: string
-  children: ReactNode
-  onClick?: () => void
-  disabled?: boolean
-  dim?: boolean
-}) {
+export function BarBtn({ label, children, onClick, disabled, dim }: BarBtnProps) {
   return (
     <button
       type="button"
@@ -92,18 +65,7 @@ export function BarBtn({
   )
 }
 
-/* primary pill — icon + text */
-export function PillBtn({
-  label,
-  onClick,
-  children,
-  disabled,
-}: {
-  label: string
-  onClick?: () => void
-  children: ReactNode
-  disabled?: boolean
-}) {
+export function PillBtn({ label, onClick, children, disabled }: PillBtnProps) {
   return (
     <button
       type="button"
@@ -117,8 +79,7 @@ export function PillBtn({
   )
 }
 
-/* dock — sticky bottom blurred bar */
-export function Dock({ children, className }: { children: ReactNode; className?: string }) {
+export function Dock({ children, className }: DockProps) {
   return (
     <div
       className={`shrink-0 border-t border-white/[0.08] bg-[rgba(9,9,11,0.86)] backdrop-blur-[22px] px-6 pt-4 pb-7 flex flex-col gap-3.5 ${className ?? ""}`}
@@ -128,23 +89,16 @@ export function Dock({ children, className }: { children: ReactNode; className?:
   )
 }
 
-/* letterboxed hero — pure black, object-contain only */
-export function LetterboxHero({
-  src,
-  alt,
-  overlay,
-  className,
-}: {
-  src?: string | null
-  alt?: string
-  overlay?: ReactNode
-  className?: string
-}) {
+export function LetterboxHero({ src, alt, overlay, className }: LetterboxHeroProps) {
   return (
     <div className={`relative rounded-[18px] overflow-hidden bg-black ${className ?? ""}`}>
       {src ? (
         <>
-          <img src={src} alt={alt ?? "preview"} className="absolute inset-0 h-full w-full object-contain" />
+          <img
+            src={src}
+            alt={alt ?? "preview"}
+            className="absolute inset-0 h-full w-full object-contain"
+          />
         </>
       ) : null}
       {overlay}
@@ -152,7 +106,6 @@ export function LetterboxHero({
   )
 }
 
-/* skeleton shimmer + spinner primitives for transient states */
 export function Spinner() {
   return (
     <div
@@ -174,4 +127,38 @@ export function SkeletonOverlay() {
       }}
     />
   )
+}
+
+type WordmarkProps = { big?: boolean }
+
+type ChromeHeaderProps = {
+  wordmark?: boolean
+  title?: string
+  onBack?: string
+  backHref?: string
+  children?: ReactNode
+}
+
+type BarBtnProps = {
+  label: string
+  children: ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  dim?: boolean
+}
+
+type PillBtnProps = {
+  label: string
+  onClick?: () => void
+  children: ReactNode
+  disabled?: boolean
+}
+
+type DockProps = { children: ReactNode; className?: string }
+
+type LetterboxHeroProps = {
+  src?: string | null
+  alt?: string
+  overlay?: ReactNode
+  className?: string
 }

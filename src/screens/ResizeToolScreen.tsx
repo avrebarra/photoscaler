@@ -9,36 +9,9 @@ import { TickDial } from "../components/TickDial"
 
 const MAX_SIDE = 8000
 
-// true 10px shortest-side floor, 8000px longest-side ceiling
-function clampPercent(raw: number, origSize: Size | null): number {
-  if (!origSize || origSize.w <= 0 || origSize.h <= 0) {
-    return Math.max(10, Math.min(400, Math.round(raw)))
-  }
-  const minSide = Math.min(origSize.w, origSize.h)
-  const maxSide = Math.max(origSize.w, origSize.h)
-  const minPercent = Math.max(1, Math.ceil((10 / minSide) * 100))
-  const maxPercent = Math.max(10, Math.floor((MAX_SIDE / maxSide) * 100))
-  return Math.min(maxPercent, Math.max(minPercent, Math.round(raw)))
-}
-
-function clampGrainStrength(v: number): number {
-  if (!Number.isFinite(v)) return 35
-  return Math.max(0, Math.min(100, Math.round(v)))
-}
-
 // resize tool: dial replaces slider, dimension badge + settings overlay (Snapseed-style).
 // presets removed; numeric % / width inputs removed from main dock (available via dial drag/wheel/keys).
-export function ResizeToolScreen({
-  imgEl,
-  origSize,
-  baseOps,
-  onApply,
-}: {
-  imgEl: HTMLImageElement | null
-  origSize: Size | null
-  baseOps: Op[]
-  onApply: (op: ResizeOp) => void
-}) {
+export function ResizeToolScreen({ imgEl, origSize, baseOps, onApply }: ResizeToolScreenProps) {
   const [percent, setPercent] = useState(100)
   const [mode, setMode] = useState<ScaleMode>("smooth")
   const [grainEnabled, setGrainEnabled] = useState(false)
@@ -54,7 +27,6 @@ export function ResizeToolScreen({
 
   const { url } = useComposedImage(imgEl, origSize, draftOps)
 
-  // bounds for dial — derived from origSize
   const minPercent = (() => {
     if (!origSize || origSize.w <= 0 || origSize.h <= 0) return 10
     return Math.max(1, Math.ceil((10 / Math.min(origSize.w, origSize.h)) * 100))
@@ -77,18 +49,20 @@ export function ResizeToolScreen({
 
   return (
     <ToolPage title="Resize" backHref="/editor" onApply={handleApply}>
-      {/* hero — letterboxed, image containment Only */}
       <div className="flex-1 min-h-0 flex flex-col px-3 pt-4">
         <div className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]">
           {url ? (
-            <img src={url} alt="resize canvas" className="absolute inset-0 h-full w-full object-contain" />
+            <img
+              src={url}
+              alt="resize canvas"
+              className="absolute inset-0 h-full w-full object-contain"
+            />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-xs text-zinc-500">Rendering…</span>
             </div>
           )}
 
-          {/* Snapseed-style settings overlay: scrim + bottom sheet, image stays faintly visible */}
           {settingsOpen && (
             <div className="absolute inset-0 z-10 flex flex-col">
               <button
@@ -127,7 +101,9 @@ export function ResizeToolScreen({
 
                 <div className="flex flex-col gap-2 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3">
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-xs font-medium text-zinc-500">Grain (on top of blur)</span>
+                    <span className="text-xs font-medium text-zinc-500">
+                      Grain (on top of blur)
+                    </span>
                     <input
                       type="checkbox"
                       aria-label="Enable grain"
@@ -150,7 +126,9 @@ export function ResizeToolScreen({
                           max={100}
                           step={1}
                           value={grainStrength}
-                          onChange={(e) => setGrainStrength(clampGrainStrength(Number(e.target.value)))}
+                          onChange={(e) =>
+                            setGrainStrength(clampGrainStrength(Number(e.target.value)))
+                          }
                           className="flex-1 accent-white"
                         />
                         <input
@@ -184,11 +162,10 @@ export function ResizeToolScreen({
         </div>
       </div>
 
-      {/* dock — badge + % + gear + tick dial (presets removed) */}
       <ToolDock>
         <div className="flex items-center gap-2">
           <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-zinc-300 tabular-nums">
-            {computedW != null && computedH != null ? `${computedW} × ${computedH} px` : "— × — px"}
+            {computedW != null && computedH != null ? `${computedW} × ${computedH} px` : "- × - px"}
           </span>
           <span className="flex-1 text-center text-[24px] font-bold tracking-[-.01em] text-white tabular-nums leading-none">
             {percent}%
@@ -212,4 +189,27 @@ export function ResizeToolScreen({
       </ToolDock>
     </ToolPage>
   )
+}
+
+function clampPercent(raw: number, origSize: Size | null): number {
+  if (!origSize || origSize.w <= 0 || origSize.h <= 0) {
+    return Math.max(10, Math.min(400, Math.round(raw)))
+  }
+  const minSide = Math.min(origSize.w, origSize.h)
+  const maxSide = Math.max(origSize.w, origSize.h)
+  const minPercent = Math.max(1, Math.ceil((10 / minSide) * 100))
+  const maxPercent = Math.max(10, Math.floor((MAX_SIDE / maxSide) * 100))
+  return Math.min(maxPercent, Math.max(minPercent, Math.round(raw)))
+}
+
+function clampGrainStrength(v: number): number {
+  if (!Number.isFinite(v)) return 35
+  return Math.max(0, Math.min(100, Math.round(v)))
+}
+
+type ResizeToolScreenProps = {
+  imgEl: HTMLImageElement | null
+  origSize: Size | null
+  baseOps: Op[]
+  onApply: (op: ResizeOp) => void
 }

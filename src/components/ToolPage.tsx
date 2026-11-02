@@ -4,19 +4,7 @@ import { ChromeHeader, Dock, PillBtn } from "./chrome"
 
 // shared tool-page shell: 72px header (back + title left, Apply pill right) + content.
 // children passthrough holds the hero + dock (bodies provide Dock); props unchanged.
-export function ToolPage({
-  title,
-  backHref,
-  onApply,
-  applyDisabled,
-  children,
-}: {
-  title: string
-  backHref: string
-  onApply: () => void
-  applyDisabled?: boolean
-  children: ReactNode
-}) {
+export function ToolPage({ title, backHref, onApply, applyDisabled, children }: ToolPageProps) {
   return (
     <div className="flex flex-col min-h-[100dvh] bg-zinc-950">
       <ChromeHeader title={title} backHref={backHref}>
@@ -31,7 +19,18 @@ export function ToolPage({
   )
 }
 
-/* helper for tool bodies to wrap their controls in the dock look */
-export function ToolDock({ children }: { children: ReactNode }) {
+export function ToolDock({ children }: ToolDockProps) {
   return <Dock>{children}</Dock>
+}
+
+type ToolPageProps = {
+  title: string
+  backHref: string
+  onApply: () => void
+  applyDisabled?: boolean
+  children: ReactNode
+}
+
+type ToolDockProps = {
+  children: ReactNode
 }

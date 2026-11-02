@@ -132,7 +132,11 @@ function lanczosResample(
       const srcCenter = (dstX + 0.5) / scaleX - 0.5
       const left = Math.ceil(srcCenter - filterA_X)
       const right = Math.floor(srcCenter + filterA_X)
-      let r = 0, g = 0, b = 0, al = 0, wSum = 0
+      let r = 0,
+        g = 0,
+        b = 0,
+        al = 0,
+        wSum = 0
       for (let k = left; k <= right; k++) {
         const clamped = Math.max(0, Math.min(srcW - 1, k))
         const w = lanczosKernel((srcCenter - k) * filterScaleX, a)
@@ -159,7 +163,11 @@ function lanczosResample(
     const top = Math.ceil(srcCenter - filterA_Y)
     const bottom = Math.floor(srcCenter + filterA_Y)
     for (let x = 0; x < dstW; x++) {
-      let r = 0, g = 0, b = 0, al = 0, wSum = 0
+      let r = 0,
+        g = 0,
+        b = 0,
+        al = 0,
+        wSum = 0
       for (let k = top; k <= bottom; k++) {
         const clamped = Math.max(0, Math.min(srcH - 1, k))
         const w = lanczosKernel((srcCenter - k) * filterScaleY, a)
@@ -221,7 +229,8 @@ function drawLanczos(
 
 function normalizeMode(raw: string): import("./scale").ScaleMode {
   if ((raw as string) === "noise") return "smooth"
-  if (raw === "lanczos" || raw === "pixelate" || raw === "smooth") return raw as import("./scale").ScaleMode
+  if (raw === "lanczos" || raw === "pixelate" || raw === "smooth")
+    return raw as import("./scale").ScaleMode
   throw new Error(`Invalid mode: ${raw}`)
 }
 
@@ -234,7 +243,12 @@ function resolveGrain(op: ResizeOp): number {
 // walk the op list from base — one drawImage per op, no cached intermediates.
 // scale < 1 renders a preview (guardless); scale = 1 is full-resolution and
 // enforces MAX_SIDE per-op, not only on the final output.
-export function compose(base: ComposeSource, origSize: Size, ops: Op[], scale: number): ComposeResult {
+export function compose(
+  base: ComposeSource,
+  origSize: Size,
+  ops: Op[],
+  scale: number,
+): ComposeResult {
   if (!origSize || origSize.w < 1 || origSize.h < 1) throw new Error("Invalid base size")
   let source: ComposeSource = base
   let cur: Size = origSize
@@ -249,7 +263,17 @@ export function compose(base: ComposeSource, origSize: Size, ops: Op[], scale: n
       const srcRect = rect
       next = { w: srcRect.width, h: srcRect.height }
       draw = (ctx) => {
-        ctx.drawImage(source, srcRect.x, srcRect.y, srcRect.width, srcRect.height, 0, 0, srcRect.width, srcRect.height)
+        ctx.drawImage(
+          source,
+          srcRect.x,
+          srcRect.y,
+          srcRect.width,
+          srcRect.height,
+          0,
+          0,
+          srcRect.width,
+          srcRect.height,
+        )
       }
     } else {
       // validate resize op — allow down to 1% for true 10px shortest-side floor (large images)
@@ -260,10 +284,14 @@ export function compose(base: ComposeSource, origSize: Size, ops: Op[], scale: n
       const mode = normalizeMode(rawMode)
       const grain = resolveGrain(op as ResizeOp)
       if (grain !== 0) {
-        if (!Number.isFinite(grain) || grain < 0 || grain > 100) throw new Error("Invalid grainStrength")
+        if (!Number.isFinite(grain) || grain < 0 || grain > 100)
+          throw new Error("Invalid grainStrength")
       }
       // legacy error message compat: also accept noiseStrength throw
-      if (op.noiseStrength != null && (op.noiseStrength < 0 || op.noiseStrength > 100 || !Number.isFinite(op.noiseStrength))) {
+      if (
+        op.noiseStrength != null &&
+        (op.noiseStrength < 0 || op.noiseStrength > 100 || !Number.isFinite(op.noiseStrength))
+      ) {
         throw new Error("Invalid grainStrength")
       }
       const rs = op.percent / 100

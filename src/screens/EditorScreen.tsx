@@ -12,15 +12,7 @@ export function EditorScreen({
   onUndo,
   onDownload,
   onOpenTool,
-}: {
-  fileName?: string | null
-  imgEl: HTMLImageElement | null
-  origSize: Size | null
-  ops: Op[]
-  onUndo: () => void
-  onDownload: () => void
-  onOpenTool: (tool: "crop" | "resize") => void
-}) {
+}: EditorScreenProps) {
   const { url, stageSize } = useComposedImage(imgEl, origSize, ops)
   const hasOps = ops.length > 0
 
@@ -33,14 +25,13 @@ export function EditorScreen({
         <BarBtn label="Undo" onClick={onUndo} dim={!hasOps} disabled={!hasOps}>
           <Undo2 size={18} strokeWidth={1.8} />
         </BarBtn>
-        <PillBtn label="Finish — download PNG" onClick={onDownload}>
+        <PillBtn label="Finish, download PNG" onClick={onDownload}>
           <Download size={17} strokeWidth={1.8} />
           Finish
         </PillBtn>
       </ChromeHeader>
 
       <div className="flex-1 min-h-0 flex flex-col">
-        {/* letterboxed hero */}
         <div className="flex-1 min-h-0 px-3 pt-4 flex flex-col">
           {isLoading ? (
             <div className="relative flex-1 rounded-[18px] overflow-hidden bg-zinc-900 border border-white/[0.08] flex flex-col items-center justify-center gap-5 min-h-[320px]">
@@ -124,4 +115,14 @@ export function EditorScreen({
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}@keyframes pulse-soft{0%,100%{opacity:.55}50%{opacity:1}}`}</style>
     </div>
   )
+}
+
+type EditorScreenProps = {
+  fileName?: string | null
+  imgEl: HTMLImageElement | null
+  origSize: Size | null
+  ops: Op[]
+  onUndo: () => void
+  onDownload: () => void
+  onOpenTool: (tool: "crop" | "resize") => void
 }

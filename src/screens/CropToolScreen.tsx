@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useReducer, useState } from "react"
 import type { CropAspect, CropRect } from "../lib/crop"
 import {
   type CropOp,
@@ -19,21 +19,14 @@ const ASPECTS: { label: string; value: CropAspect }[] = [
   { label: "Original", value: "original" },
 ]
 
-// crop tool: crops the composed stage (everything applied so far). the draft
-// is seeded immediately — no Enable button — and lives locally until Apply.
-export function CropToolScreen({
-  imgEl,
-  origSize,
-  baseOps,
-  onApply,
-}: {
-  imgEl: HTMLImageElement | null
-  origSize: Size | null
-  baseOps: Op[]
-  onApply: (op: CropOp) => void
-}) {
+// crop tool: crops the composed stage. draft is seeded immediately and lives locally until Apply.
+export function CropToolScreen({ imgEl, origSize, baseOps, onApply }: CropToolScreenProps) {
   const { url, stageSize } = useComposedImage(imgEl, origSize, baseOps)
-  const [draft, setDraft] = useState<CropRect | null>(null)
+  const [draft, setDraft] = useReducer(
+    (prev: CropRect | null, next: CropRect | null | ((p: CropRect | null) => CropRect | null)) =>
+      typeof next === "function" ? (next as (p: CropRect | null) => CropRect | null)(prev) : next,
+    null as CropRect | null,
+  )
   const [aspect, setAspect] = useState<CropAspect>("free")
 
   // seed / reseed the centered 80% draft whenever the stage changes
@@ -46,7 +39,7 @@ export function CropToolScreen({
       }
       return defaultCropRect(stageSize)
     })
-  }, [origSize, stageSize.w, stageSize.h])
+  }, [origSize, stageSize])
 
   function handleAspect(a: CropAspect) {
     setAspect(a)
@@ -67,7 +60,6 @@ export function CropToolScreen({
 
   return (
     <ToolPage title="Crop" backHref="/editor" onApply={handleApply} applyDisabled={!draft}>
-      {/* hero — letterboxed: blurred cover backdrop + object-contain foreground, overlay percent-based */}
       <div className="flex-1 min-h-0 flex flex-col px-3 pt-4">
         <div className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]">
           {url && stageSize.w > 0 && draft ? (
@@ -93,7 +85,6 @@ export function CropToolScreen({
         </div>
       </div>
 
-      {/* dock — horizontal centered chips, mockup parity; hint copy kept below row in small text */}
       <ToolDock>
         <div className="flex gap-2 justify-between">
           {ASPECTS.map((p) => (
@@ -115,4 +106,11 @@ export function CropToolScreen({
       </ToolDock>
     </ToolPage>
   )
+}
+
+type CropToolScreenProps = {
+  imgEl: HTMLImageElement | null
+  origSize: Size | null
+  baseOps: Op[]
+  onApply: (op: CropOp) => void
 }

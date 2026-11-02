@@ -1,6 +1,6 @@
 import { Crop, Scaling } from "lucide-react"
 
-export function ToolPicker({ onSelect }: { onSelect: (tool: "crop" | "resize") => void }) {
+export function ToolPicker({ onSelect }: ToolPickerProps) {
   return (
     <div className="w-fit mx-auto flex items-center gap-3">
       <button
@@ -21,4 +21,8 @@ export function ToolPicker({ onSelect }: { onSelect: (tool: "crop" | "resize") =
       </button>
     </div>
   )
+}
+
+type ToolPickerProps = {
+  onSelect: (tool: "crop" | "resize") => void
 }

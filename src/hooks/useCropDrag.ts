@@ -127,8 +127,7 @@ export function useCropDrag(
             next = { x: newX, y: newY, width: newW, height: newH }
           }
           onRectChange(next)
-        } catch {
-        }
+        } catch {}
       }
 
       const onUp = () => {

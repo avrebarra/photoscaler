@@ -31,7 +31,9 @@ describe("stageSizes", () => {
   })
 
   it("stageSize is the last stage", () => {
-    const ops: Op[] = [{ type: "crop", rect: { x: 0, y: 0, width: 10, height: 20 }, aspect: "free" }]
+    const ops: Op[] = [
+      { type: "crop", rect: { x: 0, y: 0, width: 10, height: 20 }, aspect: "free" },
+    ]
     expect(stageSize(ORIG, ops)).toEqual({ w: 10, h: 20 })
   })
 })
@@ -79,7 +81,12 @@ describe("compose", () => {
 
   it("crop op returns the rect size", () => {
     const base = makeBase(100, 100)
-    const out = compose(base, { w: 100, h: 100 }, [{ type: "crop", rect: { x: 10, y: 10, width: 30, height: 20 }, aspect: "free" }], 1)
+    const out = compose(
+      base,
+      { w: 100, h: 100 },
+      [{ type: "crop", rect: { x: 10, y: 10, width: 30, height: 20 }, aspect: "free" }],
+      1,
+    )
     expect(out.width).toBe(30)
     expect(out.height).toBe(20)
     expect(out.canvas.width).toBe(30)
@@ -99,7 +106,9 @@ describe("compose", () => {
   it("preview scale shrinks stage coordinates proportionally", () => {
     const base = makeBase(80, 60)
     // crop rect is in full-res stage coords; preview compose must map it
-    const ops: Op[] = [{ type: "crop", rect: { x: 40, y: 30, width: 40, height: 30 }, aspect: "free" }]
+    const ops: Op[] = [
+      { type: "crop", rect: { x: 40, y: 30, width: 40, height: 30 }, aspect: "free" },
+    ]
     const out = compose(base, { w: 80, h: 60 }, ops, 0.5)
     expect(out.width).toBe(20)
     expect(out.height).toBe(15)

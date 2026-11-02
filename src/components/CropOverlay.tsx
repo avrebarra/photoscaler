@@ -4,14 +4,6 @@ import { containRect } from "../lib/crop"
 import { useContainerSize } from "../hooks/useContainerSize"
 import { useCropDrag } from "../hooks/useCropDrag"
 
-export type CropOverlayProps = {
-  naturalSize: { w: number; h: number }
-  rect: CropRect | null
-  aspect: CropAspect
-  onRectChange: (rect: CropRect) => void
-  onAspectChange: (aspect: CropAspect) => void
-}
-
 export function CropOverlay({ naturalSize, rect, aspect, onRectChange }: CropOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const containerSize = useContainerSize(containerRef)
@@ -34,7 +26,11 @@ export function CropOverlay({ naturalSize, rect, aspect, onRectChange }: CropOve
     : { left: `${left}%`, top: `${top}%`, width: `${rw}%`, height: `${rh}%` }
 
   return (
-    <div ref={containerRef} className="absolute inset-0 touch-none" onMouseDown={onContainerMouseDown}>
+    <div
+      ref={containerRef}
+      className="absolute inset-0 touch-none"
+      onMouseDown={onContainerMouseDown}
+    >
       <div className="absolute inset-0 bg-black/50 pointer-events-none" />
       <div
         className="absolute border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)] touch-none cursor-move"
@@ -76,4 +72,12 @@ export function CropOverlay({ naturalSize, rect, aspect, onRectChange }: CropOve
       </div>
     </div>
   )
+}
+
+export type CropOverlayProps = {
+  naturalSize: { w: number; h: number }
+  rect: CropRect | null
+  aspect: CropAspect
+  onRectChange: (rect: CropRect) => void
+  onAspectChange: (aspect: CropAspect) => void
 }
