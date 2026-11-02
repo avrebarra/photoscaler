@@ -1,8 +1,8 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
-import { Check, ArrowLeft, Undo2, RotateCcw, Download } from "lucide-react"
+import { Check, ArrowLeft, Undo2, Download } from "lucide-react"
 
-export { Check, ArrowLeft, Undo2, RotateCcw, Download }
+export { Check, ArrowLeft, Undo2, Download }
 
 /* wordmark — app text logo */
 export function Wordmark({ big }: { big?: boolean }) {

@@ -35,7 +35,6 @@
     const IconCheck = () => mk("M20 6 9 17l-5-5");
     const IconBack  = () => mk("M15 18l-6-6 6-6", 17);
     const IconUndo  = () => mk("M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3");
-    const IconReset = () => mk("M3 12a9 9 0 1 0 9-9M3 3v6h6");
     const IconDownload = () => mk("M12 3v12M7 10l5 5 5-5M4 21h16", 17);
     const IconCrop  = () => mk("M6 2v14a2 2 0 0 0 2 2h14|M18 22V8a2 2 0 0 0-2-2H2", 19);
     const IconResize = () => mk("M3 3h18v18H3z|M9 3v18M12 3v18", 19);
@@ -160,7 +159,6 @@
         <div class="flex flex-col h-full">
           <${Header} wordmark=${true} children=${html`<div class="flex items-center gap-1">
               <${BarBtn} label="Undo" dim><${IconUndo} /></${BarBtn}>
-              <${BarBtn} label="Reset" dim><${IconReset} /></${BarBtn}>
               <${PillBtn} label="Finish — download PNG"><${IconDownload} />Finish</${PillBtn}>
             </div>`} />
           <div class="flex-1 min-h-0 flex flex-col">
@@ -216,7 +214,6 @@
         <div class="flex flex-col h-full">
           <${Header} wordmark=${true} children=${html`<div class="flex items-center gap-1 opacity-30">
               <${BarBtn} label="Undo" dim><${IconUndo} /></${BarBtn}>
-              <${BarBtn} label="Reset" dim><${IconReset} /></${BarBtn}>
             </div>`} />
           <div class="flex-1 min-h-0 flex flex-col">
             <div class="flex-1 min-h-0 px-3 pt-4">
@@ -244,7 +241,6 @@
         <div class="flex flex-col h-full">
           <${Header} wordmark=${true} children=${html`<div class="flex items-center gap-1 opacity-40">
               <${BarBtn} label="Undo"><${IconUndo} /></${BarBtn}>
-              <${BarBtn} label="Reset"><${IconReset} /></${BarBtn}>
             </div>`} />
           <div class="flex-1 min-h-0 flex flex-col">
             <div class="flex-1 min-h-0 px-3 pt-4 relative">
@@ -301,7 +297,7 @@
             <${Phone} title="Home" caption="Wordmark + pick. Nothing else.">
               <${HomeScreen} />
             </${Phone}>
-            <${Phone} title="Editor" caption="Undo · reset · Finish in header. Tools in the dock.">
+            <${Phone} title="Editor" caption="Undo · Finish in header. Tools in the dock.">
               <${EditorScreen} onPick=${() => {}} />
             </${Phone}>
             <${Phone} title="Crop" caption="Own page. Apply commits, back discards.">
