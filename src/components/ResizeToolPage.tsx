@@ -94,7 +94,7 @@ export function ResizeToolPage({
           )}
         </div>
 
-        <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center">
+        <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center shadow-[inset_0_2px_8px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(0,0,0,0.4)]">
           {url ? (
             <img src={url} alt="resize canvas" className="block max-h-[360px] max-w-full object-contain rounded-lg" />
           ) : (
@@ -110,7 +110,7 @@ export function ResizeToolPage({
           ))}
         </div>
 
-        <div className="flex items-center gap-3 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3">
+        <div className="flex items-center gap-3 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3 shadow-[inset_0_1px_4px_rgba(0,0,0,0.4)]">
           <input
             type="range"
             min={10}
@@ -127,14 +127,14 @@ export function ResizeToolPage({
               max={clampW ? Math.max(10, maxPercent) : 800}
               value={percent}
               onChange={handlePercentChange}
-              className="w-20 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500"
+              className="w-20 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]"
             />
             <span className="text-sm text-zinc-500">%</span>
           </div>
         </div>
 
         {/* editable target width — aspect locked, height derived */}
-        <div className="flex items-center gap-2 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3">
+        <div className="flex items-center gap-2 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3 shadow-[inset_0_1px_4px_rgba(0,0,0,0.4)]">
           <span className="text-xs font-medium text-zinc-500 shrink-0">Width</span>
           <input
             type="number"
@@ -145,7 +145,7 @@ export function ResizeToolPage({
             disabled={clampW == null}
             min={clampW ? Math.max(1, Math.round((clampW * 10) / 100)) : undefined}
             max={MAX_SIDE}
-            className="flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)] disabled:opacity-40 disabled:cursor-not-allowed"
           />
           <span className="text-xs text-zinc-500 shrink-0">× {targetH ?? "—"} px</span>
         </div>
