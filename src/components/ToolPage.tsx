@@ -2,8 +2,8 @@ import type { ReactNode } from "react"
 import { Check } from "lucide-react"
 import { ChromeHeader, Dock, PillBtn } from "./chrome"
 
-// shared tool-page shell: 72px header (back + title left, Apply pill right) + content + docked controls zone.
-// props unchanged — children passthrough holds Crop/Resize bodies.
+// shared tool-page shell: 72px header (back + title left, Apply pill right) + content.
+// children passthrough holds the hero + dock (bodies provide Dock); props unchanged.
 export function ToolPage({
   title,
   backHref,
@@ -26,13 +26,7 @@ export function ToolPage({
         </PillBtn>
       </ChromeHeader>
 
-      <div className="flex-1 min-h-0 flex flex-col px-6 pt-4 pb-2">{children}</div>
-
-      {/* bottom dock chrome — controls live in children (Crop/Resize bodies are read-only),
-          dock provides the blurred hairline + home indicator per spec */}
-      <div className="shrink-0 border-t border-white/[0.08] bg-[rgba(9,9,11,0.86)] backdrop-blur-[22px] px-6 pt-3 pb-7 flex flex-col items-center">
-        <div className="h-[5px] w-[110px] rounded-full bg-white/25" />
-      </div>
+      <div className="flex flex-1 min-h-0 flex-col">{children}</div>
     </div>
   )
 }
