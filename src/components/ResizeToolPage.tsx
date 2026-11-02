@@ -3,7 +3,7 @@ import type { ScaleMode } from "../lib/scale"
 import type { Op, ResizeOp, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
 import { Chip } from "./ui"
-import { ToolPage } from "./ToolPage"
+import { ToolPage, ToolDock } from "./ToolPage"
 
 const PRESETS = [25, 50, 100, 150, 200, 400]
 const MAX_SIDE = 8000
@@ -46,15 +46,8 @@ export function ResizeToolPage({
   }, [baseOps, percent, mode, noiseStrength])
   const { url, stageSize: outSize } = useComposedImage(imgEl, origSize, draftOps)
 
-  // effective orig for clamp is the stage size before this draft's resize?
-  // GW2JJ7P clamped against origSize.w; for op-stack we clamp against the
-  // current stage's width (baseOps stage) so MAX_SIDE applies to output.
-  // stage before draft = useComposedImage with baseOps (or compute)
   const clampW = origSize?.w ?? null
   const maxPercent = clampW ? Math.floor((MAX_SIDE / clampW) * 100) : 400
-  // width/height for inputs + output text derive from origSize*percent so
-  // the binding is testable without a decoded image; live preview (outSize)
-  // overrides when available but must not block the width input.
   const computedW = clampW ? Math.round((clampW * percent) / 100) : null
   const computedH = origSize ? Math.round((origSize.h * percent) / 100) : null
   const targetW = outSize.w > 0 ? outSize.w : computedW
@@ -100,33 +93,59 @@ export function ResizeToolPage({
 
   return (
     <ToolPage title="Resize" backHref="/editor" onApply={handleApply}>
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-zinc-500">Scale · {percent}%</span>
-          {origSize && displayW != null && displayH != null && (
-            <span className="text-xs text-zinc-400">
-              Output: {displayW} × {displayH} px
-            </span>
-          )}
-        </div>
-
-        <div className="overflow-auto rounded-xl bg-black p-3 flex justify-center shadow-[inset_0_2px_8px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(0,0,0,0.4)]">
+      {/* hero — letterboxed: blurred cover backdrop + object-contain foreground */}
+      <div className="flex-1 min-h-0 flex flex-col px-3 pt-4">
+        <div className="relative flex-1 rounded-[18px] overflow-hidden bg-black min-h-[320px]">
           {url ? (
-            <img src={url} alt="resize canvas" className="block max-h-[360px] max-w-full object-contain rounded-lg" />
+            <>
+              {/* slate underlay keeps dark sources readable instead of black voids */}
+              <div className="absolute inset-0 bg-gradient-to-b from-zinc-700/40 via-zinc-800/30 to-zinc-900/30" />
+              <img
+                src={url}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-cover blur-2xl scale-110 opacity-40"
+              />
+              <img
+                src={url}
+                alt="resize canvas"
+                className="absolute inset-0 h-full w-full object-contain"
+              />
+            </>
           ) : (
-            <span className="py-10 text-xs text-zinc-500">Rendering…</span>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs text-zinc-500">Rendering…</span>
+            </div>
           )}
         </div>
+      </div>
 
-        <div className="flex flex-wrap gap-2">
+      {/* dock — horizontal centered per mockup */}
+      <ToolDock>
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-medium text-zinc-500">Scale · {percent}%</span>
+          {displayW != null && displayH != null && (
+            <span className="text-xs text-zinc-400">Output: {displayW} × {displayH} px</span>
+          )}
+        </div>
+        {/* preset row — mockup: flex gap-1.5 justify-between, flex-1 h-10 */}
+        <div className="flex gap-1.5 justify-between">
           {PRESETS.map((p) => (
-            <Chip key={p} active={percent === p} onClick={() => handlePreset(p)}>
+            <button
+              key={p}
+              type="button"
+              onClick={() => handlePreset(p)}
+              className={`flex-1 h-10 rounded-full text-[12.5px] font-medium tabular-nums transition active:scale-[0.98] ${
+                percent === p ? "bg-white text-black" : "bg-white/10 text-zinc-300"
+              }`}
+            >
               {p}%
-            </Chip>
+            </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-3 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3 shadow-[inset_0_1px_4px_rgba(0,0,0,0.4)]">
+        {/* slider row — mockup: flex items-center gap-3.5 px-1.5, range flex-1 accent-white */}
+        <div className="flex items-center gap-3.5 px-1.5">
           <input
             type="range"
             min={10}
@@ -136,17 +155,23 @@ export function ResizeToolPage({
             onChange={handleSliderChange}
             className="flex-1 accent-white"
           />
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={10}
-              max={clampW ? Math.max(10, maxPercent) : 800}
-              value={percent}
-              onChange={handlePercentChange}
-              className="w-20 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]"
-            />
-            <span className="text-sm text-zinc-500">%</span>
-          </div>
+          <span className="text-[14.5px] font-medium tabular-nums text-zinc-100 w-[52px] text-right">
+            {percent}%
+          </span>
+        </div>
+
+        {/* numeric percent input — kept for parity inside dock */}
+        <div className="flex items-center gap-2 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3 shadow-[inset_0_1px_4px_rgba(0,0,0,0.4)]">
+          <span className="text-xs font-medium text-zinc-500 shrink-0">Scale</span>
+          <input
+            type="number"
+            min={10}
+            max={clampW ? Math.max(10, maxPercent) : 800}
+            value={percent}
+            onChange={handlePercentChange}
+            className="flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]"
+          />
+          <span className="text-sm text-zinc-500">%</span>
         </div>
 
         {/* editable target width — aspect locked, height derived */}
@@ -221,7 +246,7 @@ export function ResizeToolPage({
             </div>
           </div>
         )}
-      </div>
+      </ToolDock>
     </ToolPage>
   )
 }
