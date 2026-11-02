@@ -104,6 +104,9 @@ Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
         const store = getStore(canvas)
         store.set(imageData.data.subarray(0, Math.min(store.length, imageData.data.length)))
       },
+      createImageData(w: number, h: number) {
+        return { data: new Uint8ClampedArray(w * h * 4), width: w, height: h, colorSpace: "srgb" } as unknown as ImageData
+      },
     }
     // allow ctx.canvas assignment reads in pipeline (ctx.canvas)
     Object.defineProperty(ctx, "canvas", { value: canvas, writable: false })

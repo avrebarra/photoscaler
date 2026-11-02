@@ -7,7 +7,14 @@ import { applyNoise } from "./scale"
 // ops are anchored: a crop's rect is in absolute pixels of its base (the
 // composite of all prior ops); resize is relative, so it needs no base coords.
 export type CropOp = { type: "crop"; rect: CropRect; aspect: CropAspect }
-export type ResizeOp = { type: "resize"; percent: number; mode: ScaleMode; noiseStrength?: number }
+export type ResizeOp = {
+  type: "resize"
+  percent: number
+  mode: ScaleMode
+  grainStrength?: number
+  /** @deprecated legacy alias for grainStrength */
+  noiseStrength?: number
+}
 export type Op = CropOp | ResizeOp
 
 export type Size = { w: number; h: number }
@@ -94,6 +101,136 @@ function scaleRect(rect: CropRect, s: number): CropRect {
 
 type ComposeSource = HTMLImageElement | HTMLCanvasElement
 
+// lanczos helpers (duplicated from scale.ts for pipeline independence)
+function sinc(x: number): number {
+  if (x === 0) return 1
+  const pix = Math.PI * x
+  return Math.sin(pix) / pix
+}
+function lanczosKernel(x: number, a: number): number {
+  if (Math.abs(x) >= a) return 0
+  return sinc(x) * sinc(x / a)
+}
+function lanczosResample(
+  srcData: Uint8ClampedArray,
+  srcW: number,
+  srcH: number,
+  dstW: number,
+  dstH: number,
+  a: number = 3,
+): Uint8ClampedArray {
+  if (srcW === dstW && srcH === dstH) return new Uint8ClampedArray(srcData)
+  const scaleX = dstW / srcW
+  const scaleY = dstH / srcH
+  const filterScaleX = Math.min(1, scaleX)
+  const filterScaleY = Math.min(1, scaleY)
+  const filterA_X = a / filterScaleX
+  const filterA_Y = a / filterScaleY
+  const tmp = new Uint8ClampedArray(dstW * srcH * 4)
+  for (let y = 0; y < srcH; y++) {
+    for (let dstX = 0; dstX < dstW; dstX++) {
+      const srcCenter = (dstX + 0.5) / scaleX - 0.5
+      const left = Math.ceil(srcCenter - filterA_X)
+      const right = Math.floor(srcCenter + filterA_X)
+      let r = 0, g = 0, b = 0, al = 0, wSum = 0
+      for (let k = left; k <= right; k++) {
+        const clamped = Math.max(0, Math.min(srcW - 1, k))
+        const w = lanczosKernel((srcCenter - k) * filterScaleX, a)
+        if (w === 0) continue
+        const idx = (y * srcW + clamped) * 4
+        r += srcData[idx]! * w
+        g += srcData[idx + 1]! * w
+        b += srcData[idx + 2]! * w
+        al += srcData[idx + 3]! * w
+        wSum += w
+      }
+      const outIdx = (y * dstW + dstX) * 4
+      if (wSum !== 0) {
+        tmp[outIdx] = Math.max(0, Math.min(255, Math.round(r / wSum)))
+        tmp[outIdx + 1] = Math.max(0, Math.min(255, Math.round(g / wSum)))
+        tmp[outIdx + 2] = Math.max(0, Math.min(255, Math.round(b / wSum)))
+        tmp[outIdx + 3] = Math.max(0, Math.min(255, Math.round(al / wSum)))
+      }
+    }
+  }
+  const dst = new Uint8ClampedArray(dstW * dstH * 4)
+  for (let dstY = 0; dstY < dstH; dstY++) {
+    const srcCenter = (dstY + 0.5) / scaleY - 0.5
+    const top = Math.ceil(srcCenter - filterA_Y)
+    const bottom = Math.floor(srcCenter + filterA_Y)
+    for (let x = 0; x < dstW; x++) {
+      let r = 0, g = 0, b = 0, al = 0, wSum = 0
+      for (let k = top; k <= bottom; k++) {
+        const clamped = Math.max(0, Math.min(srcH - 1, k))
+        const w = lanczosKernel((srcCenter - k) * filterScaleY, a)
+        if (w === 0) continue
+        const idx = (clamped * dstW + x) * 4
+        r += tmp[idx]! * w
+        g += tmp[idx + 1]! * w
+        b += tmp[idx + 2]! * w
+        al += tmp[idx + 3]! * w
+        wSum += w
+      }
+      const outIdx = (dstY * dstW + x) * 4
+      if (wSum !== 0) {
+        dst[outIdx] = Math.max(0, Math.min(255, Math.round(r / wSum)))
+        dst[outIdx + 1] = Math.max(0, Math.min(255, Math.round(g / wSum)))
+        dst[outIdx + 2] = Math.max(0, Math.min(255, Math.round(b / wSum)))
+        dst[outIdx + 3] = Math.max(0, Math.min(255, Math.round(al / wSum)))
+      }
+    }
+  }
+  return dst
+}
+function getImageDataFromSource(source: ComposeSource, w: number, h: number): Uint8ClampedArray {
+  if (source instanceof HTMLCanvasElement) {
+    const ctx = source.getContext("2d")
+    if (ctx) {
+      try {
+        const d = ctx.getImageData(0, 0, w, h)
+        if (d.data.length === w * h * 4) return new Uint8ClampedArray(d.data)
+      } catch {
+        // fallback
+      }
+    }
+  }
+  const tmp = document.createElement("canvas")
+  tmp.width = w
+  tmp.height = h
+  const ctx = tmp.getContext("2d")
+  if (!ctx) throw new Error("Canvas not supported")
+  ctx.drawImage(source as unknown as CanvasImageSource, 0, 0, w, h)
+  return new Uint8ClampedArray(ctx.getImageData(0, 0, w, h).data)
+}
+function drawLanczos(
+  source: ComposeSource,
+  srcW: number,
+  srcH: number,
+  dstCanvas: HTMLCanvasElement,
+  dstW: number,
+  dstH: number,
+): void {
+  const srcData = getImageDataFromSource(source, srcW, srcH)
+  const out = lanczosResample(srcData, srcW, srcH, dstW, dstH, 3)
+  const ctx = dstCanvas.getContext("2d")
+  if (!ctx) throw new Error("Canvas not supported")
+  const imageData = ctx.createImageData(dstW, dstH)
+  imageData.data.set(out)
+  ctx.putImageData(imageData, 0, 0)
+}
+
+function normalizeMode(raw: string): import("./scale").ScaleMode {
+  if ((raw as string) === "noise") return "smooth"
+  if (raw === "lanczos" || raw === "pixelate" || raw === "smooth") return raw as import("./scale").ScaleMode
+  throw new Error(`Invalid mode: ${raw}`)
+}
+
+function resolveGrain(op: ResizeOp): number {
+  if (op.grainStrength != null) return op.grainStrength
+  if (op.noiseStrength != null) return op.noiseStrength
+  return 0
+}
+
 // walk the op list from base — one drawImage per op, no cached intermediates.
 // scale < 1 renders a preview (guardless); scale = 1 is full-resolution and
 // enforces MAX_SIDE per-op, not only on the final output.
@@ -119,28 +256,37 @@ export function compose(base: ComposeSource, origSize: Size, ops: Op[], scale: n
       if (!Number.isFinite(op.percent) || op.percent < 10) {
         throw new Error("Invalid percent: must be >= 10")
       }
-      if (op.mode === "noise") {
-        const ns = op.noiseStrength ?? 35
-        if (!Number.isFinite(ns) || ns < 0 || ns > 100) throw new Error("Invalid noiseStrength")
+      const rawMode = (op as unknown as { mode: string }).mode
+      const mode = normalizeMode(rawMode)
+      const grain = resolveGrain(op as ResizeOp)
+      if (grain !== 0) {
+        if (!Number.isFinite(grain) || grain < 0 || grain > 100) throw new Error("Invalid grainStrength")
+      }
+      // legacy error message compat: also accept noiseStrength throw
+      if (op.noiseStrength != null && (op.noiseStrength < 0 || op.noiseStrength > 100 || !Number.isFinite(op.noiseStrength))) {
+        throw new Error("Invalid grainStrength")
       }
       const rs = op.percent / 100
       const w = Math.max(1, Math.round(cur.w * rs))
       const h = Math.max(1, Math.round(cur.h * rs))
       next = { w, h }
-      const smooth = op.mode === "smooth" || op.mode === "noise"
-      const mode = op.mode
-      const noiseStrength = op.mode === "noise" ? (op.noiseStrength ?? 35) : 0
+      const smooth = mode === "smooth"
+      const isLanczos = mode === "lanczos"
+      const grainStrength = grain
       draw = (ctx, dw, dh) => {
-        ctx.imageSmoothingEnabled = smooth
-        // @ts-ignore - quality is optional but nice for smooth/noise mode
-        if (smooth) ctx.imageSmoothingQuality = "high"
-        ctx.drawImage(source, 0, 0, cur.w, cur.h, 0, 0, dw, dh)
-        // post-scale grain pass for noise mode — applied on the drawn canvas
-        // via ImageData so it rides the composed pixels
-        if (mode === "noise") {
-          // we need the canvas; ctx.canvas is the target canvas
+        if (isLanczos) {
           const canvas = ctx.canvas as HTMLCanvasElement
-          const strength = Math.max(0, Math.min(100, noiseStrength))
+          drawLanczos(source, cur.w, cur.h, canvas, dw, dh)
+        } else {
+          ctx.imageSmoothingEnabled = smooth
+          // @ts-ignore - quality is optional but nice for smooth mode
+          if (smooth) ctx.imageSmoothingQuality = "high"
+          else ctx.imageSmoothingEnabled = false
+          ctx.drawImage(source, 0, 0, cur.w, cur.h, 0, 0, dw, dh)
+        }
+        if (grainStrength > 0) {
+          const canvas = ctx.canvas as HTMLCanvasElement
+          const strength = Math.max(0, Math.min(100, grainStrength))
           if (strength > 0) applyNoise(canvas, strength)
         }
       }

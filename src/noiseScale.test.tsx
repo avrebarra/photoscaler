@@ -23,21 +23,47 @@ function makeImg(w: number, h: number): HTMLImageElement {
   return img
 }
 
-describe("noise mode", () => {
-  it("scaleImage noise modifies pixels vs smooth (grain applied)", () => {
+describe("grain + interpolation", () => {
+  it("scaleImage grain modifies pixels vs smooth (grain applied separately)", () => {
     const img = makeImg(10, 10)
     const smooth = scaleImage(img, 100, "smooth")
-    const noisy = scaleImage(img, 100, "noise", 80)
-    expect(smooth.canvas.width).toBe(noisy.canvas.width)
+    const grainy = scaleImage(img, 100, "smooth", 80)
+    expect(smooth.canvas.width).toBe(grainy.canvas.width)
     const sData = smooth.canvas
       .getContext("2d")!
       .getImageData(0, 0, smooth.canvas.width, smooth.canvas.height).data
-    const nData = noisy.canvas
+    const nData = grainy.canvas
       .getContext("2d")!
-      .getImageData(0, 0, noisy.canvas.width, noisy.canvas.height).data
-    // at least one channel differs due to grain
+      .getImageData(0, 0, grainy.canvas.width, grainy.canvas.height).data
     let diff = 0
     for (let i = 0; i < sData.length; i++) if (sData[i] !== nData[i]) diff++
+    expect(diff).toBeGreaterThan(0)
+  })
+
+  it("legacy noise mode still works via compat (smooth + grain)", () => {
+    const img = makeImg(10, 10)
+    const legacy = scaleImage(img, 100, "noise" as never, 80)
+    expect(legacy.canvas.width).toBe(10)
+    const data = legacy.canvas.getContext("2d")!.getImageData(0, 0, 10, 10).data
+    // should be grainy (not uniform) — at least some diff vs plain red
+    let nonRed = 0
+    for (let i = 0; i < data.length; i += 4) if (data[i] !== 180) nonRed++
+    expect(nonRed).toBeGreaterThan(0)
+  })
+
+  it("lanczos mode produces canvas at correct size", () => {
+    const img = makeImg(10, 10)
+    const lanczos = scaleImage(img, 200, "lanczos")
+    expect(lanczos.width).toBe(20)
+    expect(lanczos.height).toBe(20)
+    expect(lanczos.canvas.width).toBe(20)
+    // lanczos + grain also works
+    const lg = scaleImage(img, 200, "lanczos", 60)
+    expect(lg.canvas.width).toBe(20)
+    const d1 = lanczos.canvas.getContext("2d")!.getImageData(0, 0, 20, 20).data
+    const d2 = lg.canvas.getContext("2d")!.getImageData(0, 0, 20, 20).data
+    let diff = 0
+    for (let i = 0; i < d1.length; i++) if (d1[i] !== d2[i]) diff++
     expect(diff).toBeGreaterThan(0)
   })
 
@@ -59,12 +85,12 @@ describe("noise mode", () => {
     expect(diff).toBeGreaterThan(0)
   })
 
-  it("compose with noise op produces grain vs smooth", () => {
+  it("compose with grain produces diff vs smooth", () => {
     const base = makeBase(20, 20)
     const smoothOp: Op = { type: "resize", percent: 100, mode: "smooth" }
-    const noiseOp: Op = { type: "resize", percent: 100, mode: "noise", noiseStrength: 60 }
+    const grainOp: Op = { type: "resize", percent: 100, mode: "smooth", grainStrength: 60 }
     const s = compose(base, { w: 20, h: 20 }, [smoothOp], 1)
-    const n = compose(base, { w: 20, h: 20 }, [noiseOp], 1)
+    const n = compose(base, { w: 20, h: 20 }, [grainOp], 1)
     const sData = s.canvas
       .getContext("2d")!
       .getImageData(0, 0, s.canvas.width, s.canvas.height).data
@@ -76,34 +102,53 @@ describe("noise mode", () => {
     expect(diff).toBeGreaterThan(0)
   })
 
-  it("scaleImage throws on invalid noiseStrength", () => {
-    const img = makeImg(10, 10)
-    expect(() => scaleImage(img, 100, "noise", NaN)).toThrow(/Invalid noiseStrength/)
-    expect(() => scaleImage(img, 100, "noise", -1)).toThrow(/Invalid noiseStrength/)
-    expect(() => scaleImage(img, 100, "noise", 101)).toThrow(/Invalid noiseStrength/)
+  it("compose lanczos + grain works", () => {
+    const base = makeBase(20, 20)
+    const op: Op = { type: "resize", percent: 200, mode: "lanczos", grainStrength: 40 }
+    const r = compose(base, { w: 20, h: 20 }, [op], 1)
+    expect(r.width).toBe(40)
+    expect(r.canvas.width).toBe(40)
   })
 
-  it("compose throws on invalid noiseStrength and MAX_SIDE", () => {
+  it("scaleImage throws on invalid grainStrength", () => {
+    const img = makeImg(10, 10)
+    expect(() => scaleImage(img, 100, "smooth", NaN)).toThrow(/Invalid grainStrength/)
+    expect(() => scaleImage(img, 100, "smooth", -1)).toThrow(/Invalid grainStrength/)
+    expect(() => scaleImage(img, 100, "smooth", 101)).toThrow(/Invalid grainStrength/)
+    // legacy noise alias also throws grainStrength
+    expect(() => scaleImage(img, 100, "noise" as never, NaN)).toThrow(/Invalid grainStrength/)
+  })
+
+  it("compose throws on invalid grainStrength and MAX_SIDE", () => {
     const base = makeBase(10, 10)
     expect(() =>
       compose(
         base,
         { w: 10, h: 10 },
-        [{ type: "resize", percent: 100, mode: "noise", noiseStrength: 200 }],
+        [{ type: "resize", percent: 100, mode: "smooth", grainStrength: 200 }],
         1,
       ),
-    ).toThrow(/Invalid noiseStrength/)
+    ).toThrow(/Invalid grainStrength/)
+    // legacy alias
+    expect(() =>
+      compose(
+        base,
+        { w: 10, h: 10 },
+        [{ type: "resize", percent: 100, mode: "smooth", noiseStrength: 200 } as Op],
+        1,
+      ),
+    ).toThrow(/Invalid grainStrength/)
     expect(() =>
       compose(
         base,
         { w: 4000, h: 4000 },
-        [{ type: "resize", percent: 300, mode: "noise", noiseStrength: 35 }],
+        [{ type: "resize", percent: 300, mode: "lanczos", grainStrength: 35 }],
         1,
       ),
     ).toThrow(/Output too large/)
   })
 
-  it("ResizeToolPage shows Noise chip and grain slider when selected", () => {
+  it("ResizeToolPage shows interpolation chips + grain toggle", () => {
     render(
       <MemoryRouter>
         <ResizeToolScreen
@@ -114,10 +159,13 @@ describe("noise mode", () => {
         />
       </MemoryRouter>,
     )
-    expect(screen.getByText("Noise (grain)")).toBeInTheDocument()
+    expect(screen.getByText("Lanczos (sharp)")).toBeInTheDocument()
+    expect(screen.getByText("Blur (smooth)")).toBeInTheDocument()
+    expect(screen.getByText("Pixelate")).toBeInTheDocument()
+    expect(screen.getByLabelText("Enable grain")).toBeInTheDocument()
     // slider hidden initially
     expect(screen.queryByLabelText("Grain strength")).not.toBeInTheDocument()
-    fireEvent.click(screen.getByText("Noise (grain)"))
+    fireEvent.click(screen.getByLabelText("Enable grain"))
     expect(screen.getByLabelText("Grain strength")).toBeInTheDocument()
     expect(screen.getByLabelText("Grain strength value")).toBeInTheDocument()
     const slider = screen.getByLabelText("Grain strength") as HTMLInputElement
