@@ -7,6 +7,14 @@ import { EditorScreen } from "./components/EditorScreen"
 import { CropToolPage } from "./components/CropToolPage"
 import { ResizeToolPage } from "./components/ResizeToolPage"
 
+export function buildDownloadName(name: string, date: Date): string {
+  const base = name.replace(/\.[^.]+$/, "") || "image"
+  const ext = name.match(/\.([^.]+)$/)?.[1] ?? "png"
+  const pad = (n: number) => String(n).padStart(2, "0")
+  const timestamp = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
+  return `${base}-${timestamp}.${ext}`
+}
+
 export default function App() {
   const [file, setFile] = useState<File | null>(null)
   const [src, setSrc] = useState<string | null>(null)
@@ -54,11 +62,8 @@ export default function App() {
       const result = compose(imgEl, origSize, ops, 1)
       const url = canvasToUrl(result.canvas, "png")
       const a = document.createElement("a")
-      const base = file.name.replace(/\.[^.]+$/, "") || "image"
       a.href = url
-      const hasNoise = ops.some((o) => o.type === "resize" && o.mode === "noise")
-      const suffix = hasNoise ? "-noise" : ops.length ? "-edited" : ""
-      a.download = `${base}${suffix}.png`
+      a.download = buildDownloadName(file.name, new Date())
       a.click()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e))
