@@ -53,7 +53,6 @@ export function ResizeToolScreen({ imgEl, origSize, baseOps, onApply }: ResizeTo
     computedH != null &&
     computedW > 0 &&
     computedH > 0 &&
-    !!url &&
     !settingsOpen
 
   function handleApply() {
