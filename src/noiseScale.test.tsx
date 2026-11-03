@@ -138,14 +138,16 @@ describe("grain + interpolation", () => {
         1,
       ),
     ).toThrow(/Invalid grainStrength/)
-    expect(() =>
-      compose(
-        base,
-        { w: 4000, h: 4000 },
-        [{ type: "resize", percent: 300, mode: "lanczos", grainStrength: 35 }],
-        1,
-      ),
-    ).toThrow(/Output too large/)
+    // oversize now silently clamps to MAX_SIDE instead of throwing (previewScale parity fix)
+    const clamped = compose(
+      base,
+      { w: 100, h: 100 },
+      [{ type: "resize", percent: 9000, mode: "smooth", grainStrength: 0 }],
+      1,
+    )
+    expect(clamped.width).toBe(8000)
+    expect(clamped.height).toBe(8000)
+    expect(clamped.canvas.width).toBe(8000)
   })
 
   it("ResizeToolPage shows interpolation chips + grain toggle inside settings overlay", () => {
