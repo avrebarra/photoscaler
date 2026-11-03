@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom"
+import { Routes, Route, Navigate, useNavigate, useLocation, useBlocker } from "react-router-dom"
 import { canvasToUrl } from "./lib/scale"
 import { compose, type CropOp, type Op, type ResizeOp, type Size } from "./lib/pipeline"
 import { buildDownloadName } from "./lib/buildDownloadName"
@@ -8,6 +8,7 @@ import { WelcomeScreen } from "./screens/WelcomeScreen"
 import { EditorScreen } from "./screens/EditorScreen"
 import { CropToolScreen } from "./screens/CropToolScreen"
 import { ResizeToolScreen } from "./screens/ResizeToolScreen"
+import { ConfirmDialog } from "./components/ui"
 
 export default function App() {
   const [file, setFile] = useState<File | null>(null)
@@ -18,7 +19,21 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [decoding, setDecoding] = useState(false)
   const [pendingName, setPendingName] = useState<string | null>(null)
+  const [wordmarkConfirmOpen, setWordmarkConfirmOpen] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const hasFile = !!file
+
+  // block pop exits from /editor when an image is loaded, allow internal tool transitions
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !!file &&
+      currentLocation.pathname === "/editor" &&
+      !nextLocation.pathname.startsWith("/editor/"),
+  )
+
+  const showBlockerModal = blocker.state === "blocked"
 
   // revoke previous object URL when src changes or on unmount, no setState here
   useEffect(() => {
@@ -26,6 +41,21 @@ export default function App() {
       if (src) URL.revokeObjectURL(src)
     }
   }, [src])
+
+  function clearEditorState() {
+    try {
+      if (src) URL.revokeObjectURL(src)
+    } catch (e: unknown) {
+      setError(String(e))
+      return
+    }
+    setFile(null)
+    setSrc(null)
+    setImgEl(null)
+    setOrigSize(null)
+    setOps([])
+    setError(null)
+  }
 
   async function onFilePicked(f: File | null) {
     if (!f) return
@@ -66,7 +96,7 @@ export default function App() {
       setOps([])
       setError(null)
       intermediateUrl = null
-      navigate("/editor", { replace: true })
+      navigate("/editor")
     } catch (e: unknown) {
       if (intermediateUrl) {
         try {
@@ -148,6 +178,37 @@ export default function App() {
     }
   }
 
+  function handleWordmarkClick() {
+    if (!hasFile) {
+      handleClearImage()
+      return
+    }
+    // at /editor with image, show confirm instead of instant clear
+    if (location.pathname === "/editor") {
+      setWordmarkConfirmOpen(true)
+      return
+    }
+    handleClearImage()
+  }
+
+  function handleWordmarkConfirm() {
+    setWordmarkConfirmOpen(false)
+    handleClearImage()
+  }
+
+  function handleWordmarkCancel() {
+    setWordmarkConfirmOpen(false)
+  }
+
+  function handleBlockerConfirm() {
+    clearEditorState()
+    blocker.proceed?.()
+  }
+
+  function handleBlockerCancel() {
+    blocker.reset?.()
+  }
+
   const hiddenImg = src ? (
     <img
       src={src}
@@ -162,8 +223,6 @@ export default function App() {
       onError={() => setError("Failed to load image")}
     />
   ) : null
-
-  const hasFile = !!file
 
   // loading screen reused while decoding, shows skeleton + spinner minimum 200ms
   const decodingScreen = (
@@ -227,6 +286,28 @@ export default function App() {
 
       {hiddenImg}
 
+      {showBlockerModal && (
+        <ConfirmDialog
+          title="Clear image?"
+          body="Going back will remove the image and all edits and return to the start."
+          confirmLabel="Clear"
+          cancelLabel="Cancel"
+          onConfirm={handleBlockerConfirm}
+          onCancel={handleBlockerCancel}
+        />
+      )}
+
+      {wordmarkConfirmOpen && !showBlockerModal && (
+        <ConfirmDialog
+          title="Clear image?"
+          body="This will remove the image and all edits and return to the start."
+          confirmLabel="Clear"
+          cancelLabel="Cancel"
+          onConfirm={handleWordmarkConfirm}
+          onCancel={handleWordmarkCancel}
+        />
+      )}
+
       <div className="w-full max-w-md flex-1 flex flex-col min-h-[100dvh]">
         <Routes>
           <Route
@@ -259,11 +340,9 @@ export default function App() {
                   onReset={handleReset}
                   onDownload={handleDownload}
                   onOpenTool={(tool) =>
-                    navigate(tool === "crop" ? "/editor/crop" : "/editor/resize", {
-                      replace: true,
-                    })
+                    navigate(tool === "crop" ? "/editor/crop" : "/editor/resize")
                   }
-                  onWordmarkClick={handleClearImage}
+                  onWordmarkClick={handleWordmarkClick}
                 />
               )
             }
