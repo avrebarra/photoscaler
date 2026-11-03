@@ -1,31 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Settings, X } from "lucide-react"
 import type { ScaleMode } from "../lib/scale"
 import type { Op, ResizeOp, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
 import { usePinchZoom } from "../hooks/usePinchZoom"
-import { Chip } from "../components/ui"
 import { DimensionBadge } from "../components/chrome"
 import { ToolPage, ToolDock } from "../components/ToolPage"
+import { DragSlider } from "../components/DragSlider"
 import { TickDial } from "../components/TickDial"
 
 const MAX_SIDE = 8000
 
-// resize tool: dial replaces slider, dimension badge + settings overlay (Snapseed-style).
-// presets removed; numeric % / width inputs removed from main dock (available via dial drag/wheel/keys).
 export function ResizeToolScreen({ imgEl, origSize, baseOps, onApply }: ResizeToolScreenProps) {
+  const [subtool, setSubtool] = useState<SubtoolId>("size")
   const [percent, setPercent] = useState(100)
   const [mode, setMode] = useState<ScaleMode>("smooth")
-  const [grainEnabled, setGrainEnabled] = useState(false)
-  const [grainStrength, setGrainStrength] = useState(35)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [grainStrength, setGrainStrength] = useState(0)
 
   const draftOps = useMemo<Op[]>(() => {
-    const op: ResizeOp = grainEnabled
-      ? { type: "resize", percent, mode, grainStrength }
-      : { type: "resize", percent, mode }
+    const op: ResizeOp =
+      grainStrength > 0
+        ? { type: "resize", percent, mode, grainStrength }
+        : { type: "resize", percent, mode }
     return [...baseOps, op]
-  }, [baseOps, percent, mode, grainEnabled, grainStrength])
+  }, [baseOps, percent, mode, grainStrength])
 
   const { url } = useComposedImage(imgEl, origSize, draftOps)
 
@@ -48,15 +45,10 @@ export function ResizeToolScreen({ imgEl, origSize, baseOps, onApply }: ResizeTo
   const computedW = origSize ? Math.round((origSize.w * percent) / 100) : null
   const computedH = origSize ? Math.round((origSize.h * percent) / 100) : null
   const badgeVisible =
-    !!origSize &&
-    computedW != null &&
-    computedH != null &&
-    computedW > 0 &&
-    computedH > 0 &&
-    !settingsOpen
+    !!origSize && computedW != null && computedH != null && computedW > 0 && computedH > 0
 
   function handleApply() {
-    if (grainEnabled) {
+    if (grainStrength > 0) {
       onApply({ type: "resize", percent, mode, grainStrength: clampGrainStrength(grainStrength) })
     } else {
       onApply({ type: "resize", percent, mode })
@@ -88,136 +80,41 @@ export function ResizeToolScreen({ imgEl, origSize, baseOps, onApply }: ResizeTo
             </div>
           )}
 
-          <DimensionBadge
-            w={computedW ?? 0}
-            h={computedH ?? 0}
-            visible={badgeVisible}
-          />
-
-          {settingsOpen && (
-            <div className="absolute inset-0 z-10 flex flex-col">
-              <button
-                type="button"
-                aria-label="Close settings"
-                onClick={() => setSettingsOpen(false)}
-                className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
-              />
-              <div className="relative mt-auto mx-2 mb-2 rounded-[24px] border border-white/[0.08] bg-[rgba(9,9,11,0.96)] backdrop-blur-[22px] px-5 pt-4 pb-5 flex flex-col gap-4 shadow-[0_20px_50px_rgba(0,0,0,.5)]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[14.5px] font-semibold text-white">Resize settings</span>
-                  <button
-                    type="button"
-                    aria-label="Close settings"
-                    onClick={() => setSettingsOpen(false)}
-                    className="h-9 w-9 rounded-full grid place-items-center text-zinc-300 active:bg-white/10 transition"
-                  >
-                    <X size={17} strokeWidth={2} />
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-zinc-500">Interpolation</span>
-                  <div className="flex gap-2">
-                    <Chip active={mode === "smooth"} onClick={() => setMode("smooth")}>
-                      Blur
-                    </Chip>
-                    <Chip active={mode === "lanczos"} onClick={() => setMode("lanczos")}>
-                      Lanczos
-                    </Chip>
-                    <Chip active={mode === "pixelate"} onClick={() => setMode("pixelate")}>
-                      Pixelate
-                    </Chip>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2 rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-3">
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-xs font-medium text-zinc-500">
-                      Grain (on top of blur)
-                    </span>
-                    <input
-                      type="checkbox"
-                      aria-label="Enable grain"
-                      checked={grainEnabled}
-                      onChange={(e) => setGrainEnabled(e.target.checked)}
-                      className="accent-white"
-                    />
-                  </label>
-                  {grainEnabled && (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-zinc-500">Grain strength</span>
-                        <span className="text-xs text-zinc-400 tabular-nums">{grainStrength}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          aria-label="Grain strength"
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={grainStrength}
-                          onChange={(e) =>
-                            setGrainStrength(clampGrainStrength(Number(e.target.value)))
-                          }
-                          className="flex-1 accent-white"
-                        />
-                        <input
-                          type="number"
-                          aria-label="Grain strength value"
-                          min={0}
-                          max={100}
-                          value={grainStrength}
-                          onChange={(e) => {
-                            const v = Number(e.target.value)
-                            if (!Number.isFinite(v)) return
-                            setGrainStrength(clampGrainStrength(v))
-                          }}
-                          className="w-20 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-zinc-500"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSettingsOpen(false)}
-                  className="h-10 rounded-full bg-white text-black text-[13.5px] font-semibold active:scale-[0.98] transition"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          )}
+          <DimensionBadge w={computedW ?? 0} h={computedH ?? 0} visible={badgeVisible} />
         </div>
       </div>
 
       <ToolDock>
-        <div className="flex items-center gap-2">
-          <span className="flex-1 text-center text-[24px] font-bold tracking-[-.01em] text-white tabular-nums leading-none">
-            {percent}%
-          </span>
-          <button
-            type="button"
-            aria-label="Resize settings"
-            onClick={() => setSettingsOpen(true)}
-            className="shrink-0 h-9 w-9 rounded-full grid place-items-center bg-white/10 text-zinc-300 active:bg-white/20 transition"
-          >
-            <Settings size={16} strokeWidth={1.8} />
-          </button>
-        </div>
+        {subtool === "size" && <SubtoolLabel>SCALE</SubtoolLabel>}
+        {subtool === "interpolation" && <SubtoolLabel>INTERPOLATION</SubtoolLabel>}
+        {subtool === "grain" && <SubtoolLabel>GRAIN STRENGTH</SubtoolLabel>}
 
-        <TickDial
-          percent={percent}
-          minPercent={minPercent}
-          maxPercent={maxPercent}
-          onChange={(next) => setPercent(clampPercent(next, origSize))}
-        />
+        <SubtoolTabs active={subtool} onPick={setSubtool} />
+
+        {subtool === "size" && (
+          <TickDial
+            percent={percent}
+            minPercent={minPercent}
+            maxPercent={maxPercent}
+            onChange={(next) => setPercent(clampPercent(next, origSize))}
+          />
+        )}
+        {subtool === "interpolation" && <ChoiceControl value={mode} onPick={setMode} />}
+        {subtool === "grain" && (
+          <DragSlider
+            value={grainStrength}
+            min={0}
+            max={100}
+            onChange={(next) => setGrainStrength(clampGrainStrength(next))}
+            ariaLabel="Grain strength"
+          />
+        )}
       </ToolDock>
     </ToolPage>
   )
 }
+
+// supporting functions
 
 function clampPercent(raw: number, origSize: Size | null): number {
   if (!origSize || origSize.w <= 0 || origSize.h <= 0) {
@@ -231,13 +128,169 @@ function clampPercent(raw: number, origSize: Size | null): number {
 }
 
 function clampGrainStrength(v: number): number {
-  if (!Number.isFinite(v)) return 35
+  if (!Number.isFinite(v)) return 0
   return Math.max(0, Math.min(100, Math.round(v)))
 }
+
+// subcomponents
+
+function SubtoolTabs({ active, onPick }: SubtoolTabsProps) {
+  return (
+    <div data-component="SubtoolTabs" className="flex gap-6 justify-center">
+      <button
+        type="button"
+        aria-label="Size"
+        aria-pressed={active === "size"}
+        onClick={() => onPick("size")}
+        className="relative flex flex-col items-center transition active:scale-[0.96]"
+      >
+        <span
+          className={`grid place-items-center h-[52px] w-[52px] rounded-full border transition ${active === "size" ? "border-amber-400 text-white bg-white/5" : "border-white/20 text-zinc-400 active:bg-white/10"}`}
+        >
+          <IconScale />
+        </span>
+      </button>
+      <button
+        type="button"
+        aria-label="Interpolation"
+        aria-pressed={active === "interpolation"}
+        onClick={() => onPick("interpolation")}
+        className="relative flex flex-col items-center transition active:scale-[0.96]"
+      >
+        <span
+          className={`grid place-items-center h-[52px] w-[52px] rounded-full border transition ${active === "interpolation" ? "border-amber-400 text-white bg-white/5" : "border-white/20 text-zinc-400 active:bg-white/10"}`}
+        >
+          <IconSmooth />
+        </span>
+      </button>
+      <button
+        type="button"
+        aria-label="Grain"
+        aria-pressed={active === "grain"}
+        onClick={() => onPick("grain")}
+        className="relative flex flex-col items-center transition active:scale-[0.96]"
+      >
+        <span
+          className={`grid place-items-center h-[52px] w-[52px] rounded-full border transition ${active === "grain" ? "border-amber-400 text-white bg-white/5" : "border-white/20 text-zinc-400 active:bg-white/10"}`}
+        >
+          <IconGrain />
+        </span>
+      </button>
+    </div>
+  )
+}
+
+function SubtoolLabel({ children }: { children: string }) {
+  return (
+    <div data-component="SubtoolLabel" className="flex justify-center">
+      <span className="text-[11px] font-semibold tracking-[0.14em] uppercase text-zinc-400">
+        {children}
+      </span>
+    </div>
+  )
+}
+
+function ChoiceControl({ value, onPick }: ChoiceControlProps) {
+  return (
+    <div
+      data-component="ChoiceControl"
+      className="flex rounded-full bg-zinc-900 border border-white/[0.06] p-1"
+    >
+      <button
+        type="button"
+        aria-pressed={value === "smooth"}
+        onClick={() => onPick("smooth")}
+        className={`flex-1 h-11 rounded-full text-[13px] font-medium transition active:scale-[0.98] ${value === "smooth" ? "bg-white text-black" : "text-zinc-400 active:bg-white/10"}`}
+      >
+        Blur
+      </button>
+      <button
+        type="button"
+        aria-pressed={value === "lanczos"}
+        onClick={() => onPick("lanczos")}
+        className={`flex-1 h-11 rounded-full text-[13px] font-medium transition active:scale-[0.98] ${value === "lanczos" ? "bg-white text-black" : "text-zinc-400 active:bg-white/10"}`}
+      >
+        Lanczos
+      </button>
+      <button
+        type="button"
+        aria-pressed={value === "pixelate"}
+        onClick={() => onPick("pixelate")}
+        className={`flex-1 h-11 rounded-full text-[13px] font-medium transition active:scale-[0.98] ${value === "pixelate" ? "bg-white text-black" : "text-zinc-400 active:bg-white/10"}`}
+      >
+        Pixelate
+      </button>
+    </div>
+  )
+}
+
+function IconScale() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+    </svg>
+  )
+}
+
+function IconSmooth() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 12c.6.5 1.2 1 2.5 1C7 13 7 11 9.5 11c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+    </svg>
+  )
+}
+
+function IconGrain() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <circle cx="5" cy="5" r="1.6" />
+      <circle cx="12" cy="5" r="1.6" />
+      <circle cx="19" cy="5" r="1.6" />
+      <circle cx="5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="19" cy="12" r="1.6" />
+      <circle cx="5" cy="19" r="1.6" />
+      <circle cx="12" cy="19" r="1.6" />
+      <circle cx="19" cy="19" r="1.6" />
+    </svg>
+  )
+}
+
+// types
+
+type SubtoolId = "size" | "interpolation" | "grain"
 
 type ResizeToolScreenProps = {
   imgEl: HTMLImageElement | null
   origSize: Size | null
   baseOps: Op[]
   onApply: (op: ResizeOp) => void
+}
+
+type SubtoolTabsProps = {
+  active: SubtoolId
+  onPick(id: SubtoolId): void
+}
+
+type ChoiceControlProps = {
+  value: ScaleMode
+  onPick(v: ScaleMode): void
 }

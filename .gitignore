@@ -27,3 +27,6 @@ dev-dist
 # [epiq]: local hydrated state is never committed
 .epiq/events/
 .epiq/log/
+
+# reference mockup — local design file, not committed
+mockups/resize-subtool-dock.html
