@@ -34,6 +34,7 @@ export function ChromeHeader({
         {backHref ? (
           <Link
             to={backHref}
+            replace
             aria-label="Back"
             className="h-10 w-10 rounded-full grid place-items-center text-white active:bg-white/10 transition"
           >

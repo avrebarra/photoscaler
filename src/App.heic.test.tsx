@@ -1,7 +1,15 @@
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
-import { MemoryRouter } from "react-router-dom"
+import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import App from "./App"
+
+function renderApp(initialEntries: string[] = ["/"]) {
+  const router = createMemoryRouter([{ path: "*", element: <App /> }], {
+    initialEntries,
+    initialIndex: initialEntries.length - 1,
+  })
+  return render(<RouterProvider router={router} />)
+}
 
 vi.mock("./lib/heic", async () => {
   const actual = await vi.importActual("./lib/heic") as Record<string, unknown>
@@ -40,11 +48,7 @@ describe("heic/tiff input end to end", () => {
     const mockDecode = vi.mocked(decodeImageFile)
     mockDecode.mockResolvedValue({ blobUrl: "blob:decoded-heic", width: 100, height: 80 })
 
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App />
-      </MemoryRouter>,
-    )
+    renderApp()
 
     // initial welcome
     expect(screen.getByText("Choose image")).toBeInTheDocument()
@@ -75,11 +79,7 @@ describe("heic/tiff input end to end", () => {
     mockDecode.mockResolvedValue({ blobUrl: "blob:decoded", width: 50, height: 50 })
 
     for (const name of ["a.heic", "b.HEIF", "c.tif", "d.TIFF"]) {
-      const { unmount } = render(
-        <MemoryRouter initialEntries={["/"]}>
-          <App />
-        </MemoryRouter>,
-      )
+      const { unmount } = renderApp()
       mockDecode.mockClear()
       const f = createFile(name, "", "bytes")
       await pickFile(f)
@@ -93,11 +93,7 @@ describe("heic/tiff input end to end", () => {
     const mockDecode = vi.mocked(decodeImageFile)
     mockDecode.mockRejectedValue(new Error("Failed to decode HEIC image"))
 
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App />
-      </MemoryRouter>,
-    )
+    renderApp()
 
     const heicFile = createFile("bad.heic", "image/heic", "bad")
     await pickFile(heicFile)
@@ -114,11 +110,7 @@ describe("heic/tiff input end to end", () => {
     const mockDecode = vi.mocked(decodeImageFile)
     mockDecode.mockRejectedValue(new Error("Failed to decode TIFF image"))
 
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App />
-      </MemoryRouter>,
-    )
+    renderApp()
 
     const tiffFile = createFile("scan.tiff", "image/tiff", "bad")
     await pickFile(tiffFile)
@@ -128,11 +120,7 @@ describe("heic/tiff input end to end", () => {
   })
 
   it("accept attribute widens to include heic/heif/tif/tiff", async () => {
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App />
-      </MemoryRouter>,
-    )
+    renderApp()
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     expect(input.accept).toContain(".heic")
     expect(input.accept).toContain(".heif")
@@ -145,11 +133,7 @@ describe("heic/tiff input end to end", () => {
     const mockDecode = vi.mocked(decodeImageFile)
     const createSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:standard")
 
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App />
-      </MemoryRouter>,
-    )
+    renderApp()
 
     const pngFile = createFile("photo.png", "image/png", "pngbytes")
     await pickFile(pngFile)
