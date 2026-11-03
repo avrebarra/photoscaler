@@ -37,12 +37,37 @@ export default function App() {
     setImgEl(null)
     setOps([])
     setError(null)
-    navigate("/editor")
+    navigate("/editor", { replace: true })
   }
 
   function applyOp(op: CropOp | ResizeOp) {
     setOps((prev) => [...prev, op])
-    navigate("/editor")
+    navigate("/editor", { replace: true })
+  }
+
+  function handleReset() {
+    setOps([])
+  }
+
+  function handleClearImage() {
+    let revokeError: unknown = null
+    try {
+      if (src) URL.revokeObjectURL(src)
+    } catch (e: unknown) {
+      revokeError = e
+      setError(String(e))
+    }
+    try {
+      setFile(null)
+      setSrc(null)
+      setImgEl(null)
+      setOrigSize(null)
+      setOps([])
+      if (!revokeError) setError(null)
+      navigate("/", { replace: true })
+    } catch (e: unknown) {
+      setError(String(e))
+    }
   }
 
   function handleDownload() {
@@ -110,11 +135,14 @@ export default function App() {
                   imgEl={imgEl}
                   origSize={origSize}
                   ops={ops}
-                  onUndo={() => setOps((prev) => prev.slice(0, -1))}
+                  onReset={handleReset}
                   onDownload={handleDownload}
                   onOpenTool={(tool) =>
-                    navigate(tool === "crop" ? "/editor/crop" : "/editor/resize")
+                    navigate(tool === "crop" ? "/editor/crop" : "/editor/resize", {
+                      replace: true,
+                    })
                   }
+                  onWordmarkClick={handleClearImage}
                 />
               )
             }

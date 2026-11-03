@@ -1,22 +1,24 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { Op, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
 import { usePinchZoom } from "../hooks/usePinchZoom"
 import { ToolPicker } from "../components/ToolPicker"
 import { ChromeHeader, BarBtn, PillBtn, Dock } from "../components/chrome"
-import { Undo2, Download } from "lucide-react"
+import { RotateCcw, Download } from "lucide-react"
 
 export function EditorScreen({
   fileName,
   imgEl,
   origSize,
   ops,
-  onUndo,
+  onReset,
   onDownload,
   onOpenTool,
+  onWordmarkClick,
 }: EditorScreenProps) {
   const { url, stageSize } = useComposedImage(imgEl, origSize, ops)
   const hasOps = ops.length > 0
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const isLoading = !!fileName && !imgEl
   const isProcessing = !!imgEl && !!origSize && !url
@@ -30,10 +32,15 @@ export function EditorScreen({
   }, [url, reset])
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-zinc-950">
-      <ChromeHeader wordmark>
-        <BarBtn label="Undo" onClick={onUndo} dim={!hasOps} disabled={!hasOps}>
-          <Undo2 size={18} strokeWidth={1.8} />
+    <div className="relative flex flex-col min-h-[100dvh] bg-zinc-950">
+      <ChromeHeader wordmark onWordmarkClick={onWordmarkClick}>
+        <BarBtn
+          label="Reset changes"
+          onClick={() => setConfirmOpen(true)}
+          dim={!hasOps}
+          disabled={!hasOps}
+        >
+          <RotateCcw size={18} strokeWidth={1.8} />
         </BarBtn>
         <PillBtn label="Finish, download PNG" onClick={onDownload}>
           <Download size={17} strokeWidth={1.8} />
@@ -117,11 +124,13 @@ export function EditorScreen({
         </div>
 
         <p className="text-center text-[11px] text-zinc-500 pt-3.5 pb-1.5 tabular-nums tracking-wide shrink-0">
-          {isLoading && fileName
-            ? fileName
-            : origSize && stageSize.w > 0
-              ? `${stageSize.w} × ${stageSize.h} px`
-              : ""}
+          {confirmOpen
+            ? ""
+            : isLoading && fileName
+              ? fileName
+              : origSize && stageSize.w > 0
+                ? `${stageSize.w} × ${stageSize.h} px`
+                : ""}
         </p>
       </div>
 
@@ -130,6 +139,46 @@ export function EditorScreen({
           <ToolPicker onSelect={onOpenTool} />
         </div>
       </Dock>
+
+      {confirmOpen && (
+        <div className="absolute inset-0 z-10 flex flex-col">
+          <button
+            type="button"
+            aria-label="Close confirmation"
+            onClick={() => setConfirmOpen(false)}
+            className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
+          />
+          <div className="relative mt-auto mx-2 mb-2 rounded-[24px] border border-white/[0.08] bg-[rgba(9,9,11,0.96)] backdrop-blur-[22px] px-5 pt-4 pb-5 flex flex-col gap-4 shadow-[0_20px_50px_rgba(0,0,0,.5)]">
+            <div className="flex flex-col gap-1">
+              <span className="text-[14.5px] font-semibold text-white">Reset changes?</span>
+              <span className="text-[13px] text-zinc-400">
+                This will clear all edits and restore the original image.
+              </span>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                aria-label="Cancel"
+                onClick={() => setConfirmOpen(false)}
+                className="flex-1 h-10 rounded-full bg-white/10 text-white text-[13.5px] font-semibold active:scale-[0.98] transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                aria-label="Reset"
+                onClick={() => {
+                  onReset()
+                  setConfirmOpen(false)
+                }}
+                className="flex-1 h-10 rounded-full bg-white text-black text-[13.5px] font-semibold active:scale-[0.98] transition"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}@keyframes pulse-soft{0%,100%{opacity:.55}50%{opacity:1}}`}</style>
     </div>
@@ -141,7 +190,8 @@ type EditorScreenProps = {
   imgEl: HTMLImageElement | null
   origSize: Size | null
   ops: Op[]
-  onUndo: () => void
+  onReset: () => void
   onDownload: () => void
   onOpenTool: (tool: "crop" | "resize") => void
+  onWordmarkClick: () => void
 }
