@@ -251,7 +251,7 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
       onBlur={clearHold}
-      className={`relative h-[52px] rounded-xl bg-zinc-950 border overflow-hidden touch-none select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors duration-200 ${dragging ? "border-zinc-700 cursor-grabbing" : "border-zinc-800 cursor-ew-resize"} ${atBound ? "brightness-110" : ""}`}
+      className={`relative h-[52px] rounded-xl bg-zinc-950 border-2 overflow-hidden touch-none select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors duration-200 ${dragging ? "border-zinc-700 cursor-grabbing" : "border-zinc-800 cursor-ew-resize"} ${atBound ? "brightness-110" : ""}`}
     >
       <div
         className="pointer-events-none absolute inset-0 bg-gradient-to-r from-zinc-950 via-transparent to-zinc-950 opacity-60"
@@ -281,12 +281,12 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
           return (
             <span
               key={i}
-              className="absolute bottom-[14px] w-px bg-white pointer-events-none"
+              className="absolute bottom-[14px] w-[2px] bg-white pointer-events-none"
               style={{
                 left: `${i * 10}px`,
                 height: `${h}px`,
                 opacity,
-                transform: "translateX(-0.5px)",
+                transform: "translateX(-1px)",
               }}
             >
               {showLabel && (
@@ -297,6 +297,17 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
             </span>
           )
         })}
+        {/* red limit markers at min and max */}
+        <span
+          aria-hidden
+          className="absolute bottom-[14px] w-[2px] bg-red-500 pointer-events-none"
+          style={{ left: `${minPercent * 10}px`, height: "20px", transform: "translateX(-1px)" }}
+        />
+        <span
+          aria-hidden
+          className="absolute bottom-[14px] w-[2px] bg-red-500 pointer-events-none"
+          style={{ left: `${maxPercent * 10}px`, height: "20px", transform: "translateX(-1px)" }}
+        />
       </div>
 
       <div

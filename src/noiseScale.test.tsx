@@ -150,7 +150,7 @@ describe("grain + interpolation", () => {
     expect(clamped.canvas.width).toBe(8000)
   })
 
-  it("ResizeToolPage shows interpolation chips + grain toggle inside settings overlay", () => {
+  it("ResizeToolPage shows subtool dock with interpolation choice and grain slider at 0", () => {
     render(
       <MemoryRouter>
         <ResizeToolScreen
@@ -161,20 +161,18 @@ describe("grain + interpolation", () => {
         />
       </MemoryRouter>,
     )
-    // chips are inside overlay — open first
-    fireEvent.click(screen.getByLabelText("Resize settings"))
+    expect(screen.getByText("SCALE")).toBeInTheDocument()
+    expect(screen.getByLabelText("Scale dial")).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText("Interpolation"))
+    expect(screen.getByText("INTERPOLATION")).toBeInTheDocument()
     expect(screen.getByText("Lanczos")).toBeInTheDocument()
     expect(screen.getByText("Blur")).toBeInTheDocument()
     expect(screen.getByText("Pixelate")).toBeInTheDocument()
-    expect(screen.getByLabelText("Enable grain")).toBeInTheDocument()
-    // slider hidden initially
-    expect(screen.queryByLabelText("Grain strength")).not.toBeInTheDocument()
-    fireEvent.click(screen.getByLabelText("Enable grain"))
-    expect(screen.getByLabelText("Grain strength")).toBeInTheDocument()
-    expect(screen.getByLabelText("Grain strength value")).toBeInTheDocument()
-    const slider = screen.getByLabelText("Grain strength") as HTMLInputElement
-    expect(slider.value).toBe("35")
-    fireEvent.change(slider, { target: { value: "80" } })
-    expect((screen.getByLabelText("Grain strength value") as HTMLInputElement).value).toBe("80")
+    fireEvent.click(screen.getByLabelText("Grain"))
+    expect(screen.getByText("GRAIN STRENGTH")).toBeInTheDocument()
+    const grain = screen.getByLabelText("Grain strength")
+    expect(grain).toBeInTheDocument()
+    expect(grain.getAttribute("aria-valuenow")).toBe("0")
+    expect(screen.queryByLabelText("Enable grain")).not.toBeInTheDocument()
   })
 })
