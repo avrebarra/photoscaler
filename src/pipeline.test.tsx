@@ -114,10 +114,13 @@ describe("compose", () => {
     expect(out.height).toBe(15)
   })
 
-  it("full-res walk throws when an op exceeds MAX_SIDE", () => {
+  it("full-res walk silently clamps when an op exceeds MAX_SIDE", () => {
     const base = makeBase(10, 10)
     const ops: Op[] = [{ type: "resize", percent: 900 * 100, mode: "smooth" }]
-    expect(() => compose(base, { w: 10, h: 10 }, ops, 1)).toThrow(/Output too large/)
+    const out = compose(base, { w: 10, h: 10 }, ops, 1)
+    expect(out.width).toBe(8000)
+    expect(out.height).toBe(8000)
+    expect(out.canvas.width).toBe(8000)
   })
 
   it("preview walk does not enforce MAX_SIDE", () => {
@@ -125,5 +128,45 @@ describe("compose", () => {
     const ops: Op[] = [{ type: "resize", percent: 900 * 100, mode: "smooth" }]
     const out = compose(base, { w: 10, h: 10 }, ops, 0.1)
     expect(out.width).toBeGreaterThan(0)
+  })
+
+  it("resize 300 percent at 1000x1000 has parity between preview 900 and export 3000", () => {
+    const base = makeBase(1000, 1000)
+    const ops: Op[] = [{ type: "resize", percent: 300, mode: "smooth" }]
+    const preview = compose(base, { w: 1000, h: 1000 }, ops, 0.3)
+    expect(preview.width).toBe(900)
+    expect(preview.height).toBe(900)
+    expect(preview.canvas.width).toBe(900)
+    const exported = compose(base, { w: 1000, h: 1000 }, ops, 1)
+    expect(exported.width).toBe(3000)
+    expect(exported.height).toBe(3000)
+    expect(exported.canvas.width).toBe(3000)
+  })
+
+  it("crop then resize chain at 3000 stays uncropped in preview and export", () => {
+    const base = makeBase(1000, 1000)
+    const ops: Op[] = [
+      { type: "crop", rect: { x: 100, y: 100, width: 500, height: 500 }, aspect: "free" },
+      { type: "resize", percent: 600, mode: "smooth" },
+    ]
+    // final stage 500*6=3000, preview scale 900/3000=0.3
+    const preview = compose(base, { w: 1000, h: 1000 }, ops, 0.3)
+    expect(preview.width).toBe(900)
+    expect(preview.height).toBe(900)
+    expect(preview.canvas.width).toBe(900)
+    const exported = compose(base, { w: 1000, h: 1000 }, ops, 1)
+    expect(exported.width).toBe(3000)
+    expect(exported.height).toBe(3000)
+    const opsReverse: Op[] = [
+      { type: "resize", percent: 600, mode: "smooth" },
+      { type: "crop", rect: { x: 0, y: 0, width: 1000, height: 1000 }, aspect: "free" },
+    ]
+    const base2 = makeBase(500, 500)
+    const preview2 = compose(base2, { w: 500, h: 500 }, opsReverse, 0.3)
+    expect(preview2.width).toBe(300)
+    expect(preview2.height).toBe(300)
+    const exported2 = compose(base2, { w: 500, h: 500 }, opsReverse, 1)
+    expect(exported2.width).toBe(1000)
+    expect(exported2.height).toBe(1000)
   })
 })

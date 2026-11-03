@@ -241,8 +241,8 @@ function resolveGrain(op: ResizeOp): number {
 }
 
 // walk the op list from base — one drawImage per op, no cached intermediates.
-// scale < 1 renders a preview (guardless); scale = 1 is full-resolution and
-// enforces MAX_SIDE per-op, not only on the final output.
+// scale < 1 renders a preview at downscaled resolution for speed; scale = 1
+// is full-resolution export. preview and export share identical framing.
 export function compose(
   base: ComposeSource,
   origSize: Size,
@@ -250,16 +250,28 @@ export function compose(
   scale: number,
 ): ComposeResult {
   if (!origSize || origSize.w < 1 || origSize.h < 1) throw new Error("Invalid base size")
+  const isPreview = scale < 1
   let source: ComposeSource = base
   let cur: Size = origSize
+  if (isPreview) {
+    const pw = Math.max(1, Math.round(origSize.w * scale))
+    const ph = Math.max(1, Math.round(origSize.h * scale))
+    const canvas = document.createElement("canvas")
+    canvas.width = pw
+    canvas.height = ph
+    const ctx = canvas.getContext("2d")
+    if (!ctx) throw new Error("Canvas not supported")
+    ctx.drawImage(base as unknown as CanvasImageSource, 0, 0, pw, ph)
+    source = canvas
+    cur = { w: pw, h: ph }
+  }
 
   for (const op of ops) {
-    const s = scale
     let next: Size
     let draw: (dst: CanvasRenderingContext2D, w: number, h: number) => void
 
     if (op.type === "crop") {
-      const rect = scaleRect(op.rect, s)
+      const rect = isPreview ? scaleRect(op.rect, scale) : op.rect
       const srcRect = rect
       next = { w: srcRect.width, h: srcRect.height }
       draw = (ctx) => {
@@ -295,8 +307,8 @@ export function compose(
         throw new Error("Invalid grainStrength")
       }
       const rs = op.percent / 100
-      const w = Math.max(1, Math.round(cur.w * rs))
-      const h = Math.max(1, Math.round(cur.h * rs))
+      let w = Math.max(1, Math.round(cur.w * rs))
+      let h = Math.max(1, Math.round(cur.h * rs))
       next = { w, h }
       const smooth = mode === "smooth"
       // lanczos JS resample is ~10-50× slower than GPU drawImage — only use
@@ -323,8 +335,12 @@ export function compose(
       }
     }
 
-    if (scale === 1 && (next.w > MAX_SIDE || next.h > MAX_SIDE)) {
-      throw new Error(`Output too large: ${next.w}×${next.h} (max ${MAX_SIDE}px side)`)
+    if (!isPreview && (next.w > MAX_SIDE || next.h > MAX_SIDE)) {
+      const ratio = MAX_SIDE / Math.max(next.w, next.h)
+      next = {
+        w: Math.max(1, Math.round(next.w * ratio)),
+        h: Math.max(1, Math.round(next.h * ratio)),
+      }
     }
 
     const canvas = document.createElement("canvas")
