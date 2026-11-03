@@ -20,7 +20,14 @@ export function BigWordmark() {
   )
 }
 
-export function ChromeHeader({ wordmark, title, onBack, backHref, children }: ChromeHeaderProps) {
+export function ChromeHeader({
+  wordmark,
+  title,
+  onBack,
+  backHref,
+  onWordmarkClick,
+  children,
+}: ChromeHeaderProps) {
   const left =
     onBack || backHref ? (
       <div className="flex items-center gap-1 -ml-1.5">
@@ -39,6 +46,15 @@ export function ChromeHeader({ wordmark, title, onBack, backHref, children }: Ch
           </span>
         ) : null}
       </div>
+    ) : wordmark && onWordmarkClick ? (
+      <button
+        type="button"
+        aria-label="Go to home"
+        onClick={onWordmarkClick}
+        className="-ml-1 px-1 py-1 rounded-md active:bg-white/10 transition"
+      >
+        <Wordmark big />
+      </button>
     ) : (
       <Wordmark big={wordmark} />
     )
@@ -136,6 +152,7 @@ type ChromeHeaderProps = {
   title?: string
   onBack?: string
   backHref?: string
+  onWordmarkClick?: () => void
   children?: ReactNode
 }
 
