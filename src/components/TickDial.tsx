@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 
 const TICK_START = 0
-const TICK_END = 1000
+const EDGE_PADDING = 60
 const VELOCITY_THRESHOLD = 0.45
 const DRAG_VELOCITY_SCALE = 6
 const INERTIA_BASE = 90
@@ -234,8 +234,11 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
     }
   }
 
+  // dynamic range — was hardcoded 0..1000 so max 8000 left strip empty beyond 1000
+  const tickStart = TICK_START
+  const tickEnd = Math.ceil(maxPercent) + EDGE_PADDING
   const ticks: number[] = []
-  for (let i = TICK_START; i <= TICK_END; i++) ticks.push(i)
+  for (let i = tickStart; i <= tickEnd; i++) ticks.push(i)
 
   return (
     <div
@@ -268,8 +271,8 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
         className="absolute inset-y-0 left-1/2 will-change-transform"
         style={{
           transform: `translate3d(${-percent * 10}px, 0, 0)`,
-          width: `${(TICK_END - TICK_START) * 10}px`,
-          marginLeft: `${-TICK_START * 10}px`,
+          width: `${(tickEnd - tickStart) * 10}px`,
+          marginLeft: `${-tickStart * 10}px`,
         }}
       >
         {ticks.map((i) => {
