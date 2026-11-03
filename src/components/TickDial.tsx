@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from "react"
 
+const TICK_START = 0
+const TICK_END = 1000
+const VELOCITY_THRESHOLD = 0.45
+const DRAG_VELOCITY_SCALE = 6
+const INERTIA_BASE = 90
+const RANGE_REF = 200
+const HOLD_DELAY_MS = 300
+const HOLD_INTERVAL_MS = 85
+const WHEEL_THRESHOLD = 28
+const DRAG_DIVISOR = 3
+
 export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDialProps) {
   const clampInt = (v: number) => Math.round(Math.max(minPercent, Math.min(maxPercent, v)))
   const clampFloat = (v: number) => Math.max(minPercent, Math.min(maxPercent, v))
@@ -14,6 +25,12 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
   const lastXRef = useRef(0)
   const lastTRef = useRef(0)
 
+  const holdStartRef = useRef(0)
+  const holdTimeoutRef = useRef<number | null>(null)
+  const holdIntervalRef = useRef<number | null>(null)
+  const holdDirRef = useRef(0)
+  const holdActiveRef = useRef(false)
+
   useEffect(() => {
     fracRef.current = percent
     const el = stripRef.current
@@ -22,6 +39,13 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
     el.style.transform = `translate3d(${-percent * 10}px, 0, 0)`
     el.style.setProperty("--frac", String(percent))
   }, [percent])
+
+  useEffect(() => {
+    return () => {
+      if (holdTimeoutRef.current != null) window.clearTimeout(holdTimeoutRef.current)
+      if (holdIntervalRef.current != null) window.clearInterval(holdIntervalRef.current)
+    }
+  }, [])
 
   function updateStrip(frac: number, animate: boolean) {
     const el = stripRef.current
@@ -36,6 +60,15 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
     if (next <= minPercent) setAtBound("min")
     else if (next >= maxPercent) setAtBound("max")
     else setAtBound(null)
+  }
+
+  function clearHold() {
+    if (holdTimeoutRef.current != null) window.clearTimeout(holdTimeoutRef.current)
+    if (holdIntervalRef.current != null) window.clearInterval(holdIntervalRef.current)
+    holdTimeoutRef.current = null
+    holdIntervalRef.current = null
+    holdActiveRef.current = false
+    holdDirRef.current = 0
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -53,7 +86,20 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
     const onMove = (ev: PointerEvent) => {
       const now = performance.now()
       const dx = ev.clientX - startX
-      let next = startFrac - dx / 3
+      const dt = Math.max(1, now - lastTRef.current)
+      const instVel = (ev.clientX - lastXRef.current) / dt
+      velRef.current = instVel * -0.33
+      lastXRef.current = ev.clientX
+      lastTRef.current = now
+
+      // base mapping
+      let next = startFrac - dx / DRAG_DIVISOR
+      // velocity proportional boost when above threshold
+      if (Math.abs(velRef.current) >= VELOCITY_THRESHOLD) {
+        const rangeScale = getRangeScale(minPercent, maxPercent)
+        const boost = velRef.current * DRAG_VELOCITY_SCALE * rangeScale
+        next += boost
+      }
       if (next < minPercent) {
         const over = minPercent - next
         next = minPercent - Math.pow(over, 0.72) * 0.5
@@ -63,11 +109,6 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
       }
       curFrac = next
       fracRef.current = next
-      const dt = Math.max(1, now - lastTRef.current)
-      const instVel = (ev.clientX - lastXRef.current) / dt
-      velRef.current = instVel * -0.33
-      lastXRef.current = ev.clientX
-      lastTRef.current = now
 
       updateStrip(next, false)
       const intNext = clampInt(next)
@@ -84,7 +125,13 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
       el.removeEventListener("pointercancel", onUp as unknown as EventListener)
       setDragging(false)
 
-      let target = clampFloat(curFrac + velRef.current * 90)
+      // inertia scaled by velocity and range
+      let target = curFrac
+      if (Math.abs(velRef.current) >= VELOCITY_THRESHOLD) {
+        const rangeScale = getRangeScale(minPercent, maxPercent)
+        const inertia = velRef.current * INERTIA_BASE * rangeScale
+        target = clampFloat(curFrac + inertia)
+      }
       target = clampFloat(target)
       const snapped = clampInt(target)
       fracRef.current = snapped
@@ -103,34 +150,90 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
     e.preventDefault()
     cancelAnimationFrame(rafRef.current)
     const dir = Math.sign(e.deltaY)
-    const step = dir > 0 ? -1 : dir < 0 ? 1 : 0
-    if (step === 0) return
-    const next = clampInt(fracRef.current + step)
+    if (dir === 0) return
+    const rangeScale = getRangeScale(minPercent, maxPercent)
+    const absDelta = Math.abs(e.deltaY)
+    let step = 1
+    if (absDelta >= WHEEL_THRESHOLD) {
+      // smooth proportional matching drag factor
+      const extra = Math.round((absDelta / 50) * rangeScale * 1.2)
+      step = Math.min(12, Math.max(1, 1 + extra))
+    }
+    const signed = dir > 0 ? -step : step
+    const next = clampInt(fracRef.current + signed)
     fracRef.current = next
     updateStrip(next, true)
     setBound(next)
-    onChange(next)
+    if (next !== percent) onChange(next)
     window.setTimeout(() => setAtBound(null), 220)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     cancelAnimationFrame(rafRef.current)
-    let next: number | null = null
-    if (e.key === "ArrowRight" || e.key === "ArrowUp") next = clampInt(percent + 1)
-    else if (e.key === "ArrowLeft" || e.key === "ArrowDown") next = clampInt(percent - 1)
-    else if (e.key === "Home") next = minPercent
-    else if (e.key === "End") next = maxPercent
-    if (next == null) return
+    let dir: number | null = null
+    if (e.key === "ArrowRight" || e.key === "ArrowUp") dir = 1
+    else if (e.key === "ArrowLeft" || e.key === "ArrowDown") dir = -1
+    else if (e.key === "Home") {
+      e.preventDefault()
+      const next = minPercent
+      fracRef.current = next
+      updateStrip(next, true)
+      setBound(next)
+      onChange(next)
+      window.setTimeout(() => setAtBound(null), 220)
+      return
+    } else if (e.key === "End") {
+      e.preventDefault()
+      const next = maxPercent
+      fracRef.current = next
+      updateStrip(next, true)
+      setBound(next)
+      onChange(next)
+      window.setTimeout(() => setAtBound(null), 220)
+      return
+    }
+    if (dir == null) return
     e.preventDefault()
+
+    // single press always 1 percent
+    const next = clampInt(percent + dir)
     fracRef.current = next
     updateStrip(next, true)
     setBound(next)
-    onChange(next)
+    if (next !== percent) onChange(next)
     window.setTimeout(() => setAtBound(null), 220)
+
+    // hold acceleration setup, only for arrow keys
+    if (holdActiveRef.current && holdDirRef.current === dir) return
+    clearHold()
+    holdDirRef.current = dir
+    holdStartRef.current = performance.now()
+    holdActiveRef.current = true
+
+    const tickHold = () => {
+      const elapsed = performance.now() - holdStartRef.current
+      if (elapsed < HOLD_DELAY_MS) return
+      const rangeScale = getRangeScale(minPercent, maxPercent)
+      const step = getHoldStep(elapsed, rangeScale)
+      const accelerated = clampInt(fracRef.current + holdDirRef.current * step)
+      if (accelerated === fracRef.current) return
+      fracRef.current = accelerated
+      updateStrip(accelerated, true)
+      setBound(accelerated)
+      onChange(accelerated)
+    }
+
+    holdTimeoutRef.current = window.setTimeout(() => {
+      holdIntervalRef.current = window.setInterval(tickHold, HOLD_INTERVAL_MS)
+    }, HOLD_DELAY_MS)
   }
 
-  const TICK_START = 0
-  const TICK_END = 1000
+  function handleKeyUp(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "ArrowDown") {
+      clearHold()
+    }
+  }
+
   const ticks: number[] = []
   for (let i = TICK_START; i <= TICK_END; i++) ticks.push(i)
 
@@ -146,6 +249,8 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
       onPointerDown={handlePointerDown}
       onWheel={handleWheel}
       onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
+      onBlur={clearHold}
       className={`relative h-[52px] rounded-xl bg-zinc-950 border overflow-hidden touch-none select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors duration-200 ${dragging ? "border-zinc-700 cursor-grabbing" : "border-zinc-800 cursor-ew-resize"} ${atBound ? "brightness-110" : ""}`}
     >
       <div
@@ -214,6 +319,48 @@ export function TickDial({ percent, minPercent, maxPercent, onChange }: TickDial
     </div>
   )
 }
+
+// supporting functions
+
+export function getRangeScale(minPercent: number, maxPercent: number): number {
+  const range = maxPercent - minPercent
+  if (range <= 0) return 1
+  const s = range / RANGE_REF
+  return Math.max(0.5, Math.min(5, s))
+}
+
+export function getWheelStep(deltaY: number, rangeScale: number): number {
+  const absDelta = Math.abs(deltaY)
+  if (absDelta < WHEEL_THRESHOLD) return 1
+  const extra = Math.round((absDelta / 50) * rangeScale * 1.2)
+  return Math.min(12, Math.max(1, 1 + extra))
+}
+
+export function computeDragNext(startFrac: number, dx: number, velocity: number, minPercent: number, maxPercent: number): number {
+  let next = startFrac - dx / DRAG_DIVISOR
+  if (Math.abs(velocity) >= VELOCITY_THRESHOLD) {
+    const rangeScale = getRangeScale(minPercent, maxPercent)
+    next += velocity * DRAG_VELOCITY_SCALE * rangeScale
+  }
+  return next
+}
+
+export function computeInertiaTarget(curFrac: number, velocity: number, minPercent: number, maxPercent: number): number {
+  if (Math.abs(velocity) < VELOCITY_THRESHOLD) return curFrac
+  const rangeScale = getRangeScale(minPercent, maxPercent)
+  const raw = curFrac + velocity * INERTIA_BASE * rangeScale
+  return Math.max(minPercent, Math.min(maxPercent, raw))
+}
+
+export function getHoldStep(elapsed: number, rangeScale: number): number {
+  const over = Math.max(0, elapsed - HOLD_DELAY_MS)
+  // ramp from 1 percent upward proportionally
+  const ramp = Math.floor(over / 280)
+  const base = 1 + ramp * Math.max(1, Math.round(rangeScale * 1.4))
+  return Math.min(18, Math.max(1, base))
+}
+
+// types
 
 type TickDialProps = {
   percent: number
