@@ -122,6 +122,18 @@ export function LetterboxHero({ src, alt, overlay, className }: LetterboxHeroPro
   )
 }
 
+export function DimensionBadge({ w, h, visible }: DimensionBadgeProps) {
+  if (!visible) return null
+  return (
+    <span
+      aria-label="dimensions"
+      className="absolute bottom-2 left-2 rounded-full bg-black/60 backdrop-blur px-2.5 py-1 text-[11px] font-medium text-white tabular-nums pointer-events-none"
+    >
+      {w} × {h} px
+    </span>
+  )
+}
+
 export function Spinner() {
   return (
     <div
@@ -178,4 +190,10 @@ type LetterboxHeroProps = {
   alt?: string
   overlay?: ReactNode
   className?: string
+}
+
+type DimensionBadgeProps = {
+  w: number
+  h: number
+  visible: boolean
 }

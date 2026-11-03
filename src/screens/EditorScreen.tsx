@@ -3,7 +3,7 @@ import type { Op, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
 import { usePinchZoom } from "../hooks/usePinchZoom"
 import { ToolPicker } from "../components/ToolPicker"
-import { ChromeHeader, BarBtn, PillBtn, Dock } from "../components/chrome"
+import { ChromeHeader, BarBtn, PillBtn, Dock, DimensionBadge } from "../components/chrome"
 import { RotateCcw, Download } from "lucide-react"
 
 export function EditorScreen({
@@ -22,6 +22,8 @@ export function EditorScreen({
 
   const isLoading = !!fileName && !imgEl
   const isProcessing = !!imgEl && !!origSize && !url
+  const badgeVisible =
+    !!origSize && stageSize.w > 0 && stageSize.h > 0 && !isLoading && !isProcessing && !confirmOpen
 
   const previewRef = useRef<HTMLDivElement>(null)
   const { scale, tx, ty, reset, bind } = usePinchZoom(previewRef)
@@ -48,10 +50,9 @@ export function EditorScreen({
         </PillBtn>
       </ChromeHeader>
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <div className="flex-1 min-h-0 px-3 pt-4 flex flex-col">
-          {isLoading ? (
-            <div className="relative flex-1 rounded-[18px] overflow-hidden bg-zinc-900 border border-white/[0.08] flex flex-col items-center justify-center gap-5 min-h-[320px]">
+      <div className="flex-1 min-h-0 px-3 pt-4 flex flex-col">
+        {isLoading ? (
+          <div className="relative flex-1 rounded-[18px] overflow-hidden bg-zinc-900 border border-white/[0.08] flex flex-col items-center justify-center gap-5 min-h-[320px]">
               <div
                 className="absolute inset-0"
                 style={{
@@ -119,19 +120,9 @@ export function EditorScreen({
                   <p className="text-[14px] font-medium text-white">Applying changes…</p>
                 </div>
               )}
+              <DimensionBadge w={stageSize.w} h={stageSize.h} visible={badgeVisible} />
             </div>
           )}
-        </div>
-
-        <p className="text-center text-[11px] text-zinc-500 pt-3.5 pb-1.5 tabular-nums tracking-wide shrink-0">
-          {confirmOpen
-            ? ""
-            : isLoading && fileName
-              ? fileName
-              : origSize && stageSize.w > 0
-                ? `${stageSize.w} × ${stageSize.h} px`
-                : ""}
-        </p>
       </div>
 
       <Dock>
