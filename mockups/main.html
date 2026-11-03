@@ -22,7 +22,7 @@
   </style>
 </head>
 <body class="min-h-screen" style="background:#9aa88b">
-  <!-- presentation mockup: RHZ6PJF v8 — app-store-worthy pass: 16px gutters, 56px headers, Finish pill, big wordmark everywhere -->
+  <!-- presentation mockup: RHZ6PJF v8 + KVNPTHD heic/tiff — app-store-worthy pass: 16px gutters, 56px headers, Finish pill, big wordmark everywhere; loading decodes heic/tiff via WASM -->
   <div id="root"></div>
   <script>
     const html = htm.bind(preact.h);
@@ -131,7 +131,7 @@
       `;
     }
 
-    // home — no header bar: wordmark as hero top-center, drop box fills the bottom
+    // home — no header bar: wordmark as hero top-center, drop box fills the bottom; accept includes .heic/.heif/.tif/.tiff via WASM decode
     function HomeScreen() {
       return html`
         <div class="flex flex-col h-full">
@@ -145,7 +145,7 @@
             <div class="flex-1 rounded-[18px] bg-zinc-900 border hairline flex flex-col overflow-hidden">
               <div class="flex-1 flex flex-col items-center justify-center gap-4 px-7 m-2 rounded-[14px] border border-dashed border-white/10 bg-black/40 text-center">
                 <button class="h-12 px-9 rounded-full bg-white text-[16px] font-semibold text-black active:scale-95 transition shadow-[0_2px_10px_rgba(0,0,0,.35)]">Choose image</button>
-                <p class="text-[13px] text-zinc-500">or drop it here</p>
+                <p class="text-[13px] text-zinc-500">or drop it here · HEIC, TIFF supported</p>
               </div>
             </div>
           </div>
@@ -309,7 +309,7 @@
       `;
     }
 
-    // loading — picked image decoding before first render: skeleton hero + spinner, no tools yet
+    // loading — picked image decoding before first render: skeleton hero + spinner, no tools yet; covers heic/tiff WASM decode with 200ms minimum
     function LoadingScreen() {
       return html`
         <div class="flex flex-col h-full">
@@ -410,13 +410,13 @@
             <${Phone} title="Processing" caption="Transient state while ops apply. Controls dim, spinner owns the moment.">
               <${ProcessingScreen} />
             </${Phone}>
-            <${Phone} title="Loading" caption="Picked image decoding. Skeleton hero, controls inert until first render.">
+            <${Phone} title="Loading" caption="Picked image decoding (WASM heic/tiff). Skeleton hero, controls inert until first render, 200ms minimum.">
               <${LoadingScreen} />
             </${Phone}>
           </div>
 
           <footer class="text-center mt-14 text-[12px] text-black/40">
-            Composition — resize: tick dial scrub + Snapseed-style settings overlay (QN5Z74X) · base: RHZ6PJF
+            Composition — resize: tick dial scrub + Snapseed-style settings overlay (QN5Z74X) · heic/tiff WASM decode (KVNPTHD) · base: RHZ6PJF
           </footer>
         </div>
       `;
