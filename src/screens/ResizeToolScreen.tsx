@@ -5,6 +5,7 @@ import type { Op, ResizeOp, Size } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
 import { usePinchZoom } from "../hooks/usePinchZoom"
 import { Chip } from "../components/ui"
+import { DimensionBadge } from "../components/chrome"
 import { ToolPage, ToolDock } from "../components/ToolPage"
 import { TickDial } from "../components/TickDial"
 
@@ -46,6 +47,14 @@ export function ResizeToolScreen({ imgEl, origSize, baseOps, onApply }: ResizeTo
 
   const computedW = origSize ? Math.round((origSize.w * percent) / 100) : null
   const computedH = origSize ? Math.round((origSize.h * percent) / 100) : null
+  const badgeVisible =
+    !!origSize &&
+    computedW != null &&
+    computedH != null &&
+    computedW > 0 &&
+    computedH > 0 &&
+    !!url &&
+    !settingsOpen
 
   function handleApply() {
     if (grainEnabled) {
@@ -79,6 +88,12 @@ export function ResizeToolScreen({ imgEl, origSize, baseOps, onApply }: ResizeTo
               <span className="text-xs text-zinc-500">Rendering…</span>
             </div>
           )}
+
+          <DimensionBadge
+            w={computedW ?? 0}
+            h={computedH ?? 0}
+            visible={badgeVisible}
+          />
 
           {settingsOpen && (
             <div className="absolute inset-0 z-10 flex flex-col">
@@ -181,9 +196,6 @@ export function ResizeToolScreen({ imgEl, origSize, baseOps, onApply }: ResizeTo
 
       <ToolDock>
         <div className="flex items-center gap-2">
-          <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-zinc-300 tabular-nums">
-            {computedW != null && computedH != null ? `${computedW} × ${computedH} px` : "- × - px"}
-          </span>
           <span className="flex-1 text-center text-[24px] font-bold tracking-[-.01em] text-white tabular-nums leading-none">
             {percent}%
           </span>

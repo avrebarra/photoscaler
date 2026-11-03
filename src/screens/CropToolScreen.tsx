@@ -9,6 +9,7 @@ import {
 } from "../lib/pipeline"
 import { useComposedImage } from "../hooks/useComposedImage"
 import { CropOverlay } from "../components/CropOverlay"
+import { DimensionBadge } from "../components/chrome"
 import { ToolPage, ToolDock } from "../components/ToolPage"
 
 const ASPECTS: { label: string; value: CropAspect }[] = [
@@ -58,6 +59,8 @@ export function CropToolScreen({ imgEl, origSize, baseOps, onApply }: CropToolSc
     onApply({ type: "crop", rect: draft, aspect })
   }
 
+  const badgeVisible = !!origSize && stageSize.w > 0 && stageSize.h > 0 && !!url
+
   return (
     <ToolPage title="Crop" backHref="/editor" onApply={handleApply} applyDisabled={!draft}>
       <div className="flex-1 min-h-0 flex flex-col px-3 pt-4">
@@ -82,6 +85,7 @@ export function CropToolScreen({ imgEl, origSize, baseOps, onApply }: CropToolSc
               <span className="text-xs text-zinc-500">Rendering…</span>
             </div>
           )}
+          <DimensionBadge w={stageSize.w} h={stageSize.h} visible={badgeVisible} />
         </div>
       </div>
 
